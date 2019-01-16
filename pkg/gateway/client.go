@@ -41,14 +41,14 @@ type ServiceData struct {
 
 // Register instance on gateway
 func (c *Client) Register(log *logrus.Entry, req *ServiceData) error {
-	return c.reqREgisterUnregister(log, "RegisterDeployment", req)
+	return c.reqRegisterUnregister(log, "RegisterDeployment", req)
 }
 
 // Unregister -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 // Unregister instance on gateway
 func (c *Client) Unregister(log *logrus.Entry, req *ServiceData) error {
-	return c.reqREgisterUnregister(log, "UnregisterDeployment", req)
+	return c.reqRegisterUnregister(log, "UnregisterDeployment", req)
 }
 
 // RunResult -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -102,7 +102,7 @@ type UpdateResultRequest struct {
 }
 
 func (r *UpdateResultRequest) SetErr(err error) *UpdateResultRequest {
-	r.Type = RunResultRequestTypeErr
+	r.Type = UpdateResultRequestTypeErr
 	r.Result = json.RawMessage(fmt.Sprintf(`{"message":"%s"}`, err.Error()))
 	return r
 }
@@ -123,7 +123,7 @@ func (c *Client) UpdateResult(log *logrus.Entry, req *UpdateResultRequest) error
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-func (c *Client) reqREgisterUnregister(log *logrus.Entry, method string, req *ServiceData) error {
+func (c *Client) reqRegisterUnregister(log *logrus.Entry, method string, req *ServiceData) error {
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return err
