@@ -1,8 +1,8 @@
 package deploy
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,8 +18,8 @@ import (
 
 // StorageInterface for deploy action
 type StorageInterface interface {
-	UpsertStepList(log *logrus.Entry, modelList []Model) error
-	GetStepList(log *logrus.Entry) ([]Model, error)
+	UpsertStepList(log *logrus.Entry, modelList []StepModel) error
+	GetStepList(log *logrus.Entry) ([]StepModel, error)
 	HasStepList(log *logrus.Entry, id int) (bool, error)
 	SetTagHash(log *logrus.Entry, hash string) error
 	GetTagHash(log *logrus.Entry) (hash string, err error)
@@ -44,7 +44,7 @@ func New(cfg Config, githubClient *github.Client, storage StorageInterface) *Com
 }
 
 //GetStepList return list of available steps
-func (c *Component) GetStepList(log *logrus.Entry) ([]Model, error) {
+func (c *Component) GetStepList(log *logrus.Entry) ([]StepModel, error) {
 	return c.storage.GetStepList(log)
 }
 
@@ -115,25 +115,29 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 
 // RunStep run step command
 // TODO run with ctx, and ability for stop
-func (c *Component) RunStep(log *logrus.Entry, stepID int) error {
+func (c *Component) RunStep(log *logrus.Entry, stepID int) *ResultErrorModel {
 	hasStep, err := c.storage.HasStepList(log, stepID)
 	if err != nil {
-		return err
+		return NewResultErrorModelFromErr(err)
 	}
 	if !hasStep {
-		return errors.New("unknown id of step")
+		return NewResultErrorModelFromTxt("unknown id of step")
 	}
 	commandName := fmt.Sprintf("./step-%d-deploy", stepID)
 	cmd := exec.Command(commandName)
+	stdErrBuf := bytes.NewBufferString("")
+	cmd.Stderr = stdErrBuf
 	cmd.Dir = c.getStepListFilePath()
 	if err := cmd.Run(); err != nil {
-		return err
+		log.WithError(err).Error("Cmd running error")
+		log.Debugf("Cmd running error trace: %s", stdErrBuf.String())
+		return NewResultErrorModelFromErr(err).WithStderr(stdErrBuf.Bytes())
 	}
 	return nil
 }
 
-func (c *Component) getStepList(log *logrus.Entry) ([]Model, error) {
-	stepList := make([]Model, 0)
+func (c *Component) getStepList(log *logrus.Entry) ([]StepModel, error) {
+	stepList := make([]StepModel, 0)
 	dirPath := c.getStepListFilePath()
 	log.Debugf("Read step list from: %s", dirPath)
 	wErr := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
@@ -168,12 +172,12 @@ func (c *Component) getStepList(log *logrus.Entry) ([]Model, error) {
 	return stepList, nil
 }
 
-func readStepDescriptionFile(path string) (*Model, error) {
+func readStepDescriptionFile(path string) (*StepModel, error) {
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var model Model
+	var model StepModel
 	if err := json.Unmarshal(bytes, &model); err != nil {
 		return nil, err
 	}

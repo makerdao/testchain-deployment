@@ -8,7 +8,7 @@ import (
 
 //StorageInterface for methods
 type StorageInterface interface {
-	GetStepList(log *logrus.Entry) ([]deploy.Model, error)
+	GetStepList(log *logrus.Entry) ([]deploy.StepModel, error)
 	GetTagHash(log *logrus.Entry) (hash string, err error)
 	HasData() bool
 	SetRun(run bool) error

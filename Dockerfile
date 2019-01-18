@@ -1,4 +1,4 @@
-FROM alpine:3.8
+FROM bash:5.0.0
 
 ENV TCD_PORT 5001
 

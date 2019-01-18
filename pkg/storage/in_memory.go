@@ -15,21 +15,21 @@ type InMemory struct {
 	run      bool
 	update   bool
 	hash     string
-	modelMap map[int]deploy.Model
+	modelMap map[int]deploy.StepModel
 	mu       sync.Mutex
 }
 
 //NewInMemory init storaga
 func NewInMemory() *InMemory {
 	return &InMemory{
-		modelMap: make(map[int]deploy.Model),
+		modelMap: make(map[int]deploy.StepModel),
 	}
 }
 
-func (s *InMemory) UpsertStepList(log *logrus.Entry, modelList []deploy.Model) error {
+func (s *InMemory) UpsertStepList(log *logrus.Entry, modelList []deploy.StepModel) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.modelMap = make(map[int]deploy.Model)
+	s.modelMap = make(map[int]deploy.StepModel)
 	for _, model := range modelList {
 		if _, ok := s.modelMap[model.ID]; ok {
 			return errors.New("some model has equal id")
@@ -40,11 +40,11 @@ func (s *InMemory) UpsertStepList(log *logrus.Entry, modelList []deploy.Model) e
 	return nil
 }
 
-func (s *InMemory) GetStepList(log *logrus.Entry) ([]deploy.Model, error) {
+func (s *InMemory) GetStepList(log *logrus.Entry) ([]deploy.StepModel, error) {
 	if !s.HasData() {
 		return nil, errors.New("has not loaded data")
 	}
-	res := make([]deploy.Model, 0)
+	res := make([]deploy.StepModel, 0)
 	for _, model := range s.modelMap {
 		res = append(res, model)
 	}

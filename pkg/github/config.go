@@ -63,7 +63,7 @@ func (c *Config) Validate() error {
 func GetDefaultConfig() Config {
 	return Config{
 		RepoName:              "testchain-dss-deployment-scripts",
-		TagName:               "qa-deploy",
+		TagName:               "deploy",
 		ClientTimeoutInSecond: 10,
 		WorkDir:               "/downloaded",
 	}

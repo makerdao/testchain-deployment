@@ -43,8 +43,14 @@ func (m *Methods) Run(
 				log.WithError(err).Error("Can't reset run status")
 			}
 		}()
-		if err := m.deployComponent.RunStep(log, req.StepID); err != nil {
-			if err := m.gatewayClient.RunResult(log, resultReq.SetErr(err)); err != nil {
+		if resErr := m.deployComponent.RunStep(log, req.StepID); resErr != nil {
+			resultReq.Type = gateway.RunResultRequestTypeErr
+			errResBytes, err := json.Marshal(resErr)
+			if err != nil {
+				log.WithError(err).Error("Can't marshal error for run result")
+			}
+			resultReq.Result = errResBytes
+			if err := m.gatewayClient.RunResult(log, resultReq); err != nil {
 				log.WithError(err).Error("Can't send request with result of run to gateway with error")
 			}
 			return

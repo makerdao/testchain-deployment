@@ -41,14 +41,22 @@ type ServiceData struct {
 
 // Register instance on gateway
 func (c *Client) Register(log *logrus.Entry, req *ServiceData) error {
-	return c.reqRegisterUnregister(log, "RegisterDeployment", req)
+	return c.reqRegisterUnregister(
+		log,
+		"RegisterDeployment",
+		req,
+	)
 }
 
 // Unregister -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 // Unregister instance on gateway
 func (c *Client) Unregister(log *logrus.Entry, req *ServiceData) error {
-	return c.reqRegisterUnregister(log, "UnregisterDeployment", req)
+	return c.reqRegisterUnregister(
+		log,
+		"UnregisterDeployment",
+		req,
+	)
 }
 
 // RunResult -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -137,6 +145,7 @@ func (c *Client) reqRegisterUnregister(log *logrus.Entry, method string, req *Se
 }
 
 func (c *Client) req(log *logrus.Entry, method string, reqBytes json.RawMessage) (json.RawMessage, error) {
+	log.WithField("Client.Method", "Gateway."+method)
 	reqBody := protocol.Request{
 		Method: method,
 		Data:   reqBytes,
@@ -146,6 +155,7 @@ func (c *Client) req(log *logrus.Entry, method string, reqBytes json.RawMessage)
 		return nil, err
 	}
 
+	log.Debugf("Request data: %s", string(reqBodyBytes))
 	httpReq, err := http.NewRequest(http.MethodPost, c.basePath+rpcURI, bytes.NewReader(reqBodyBytes))
 	if err != nil {
 		return nil, err

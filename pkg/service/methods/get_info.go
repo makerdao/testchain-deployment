@@ -10,8 +10,8 @@ import (
 
 //GetInfoResponse response struct
 type GetInfoResponse struct {
-	Steps   []deploy.Model `json:"steps"`
-	TagHash string         `json:"tagHash"`
+	Steps   []deploy.StepModel `json:"steps"`
+	TagHash string             `json:"tagHash"`
 }
 
 //GetInfo return info about steps and commit's hash of tag
