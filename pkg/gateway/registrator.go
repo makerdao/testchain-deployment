@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -26,7 +27,7 @@ func NewRegistrator(cfg Config, client *Client, host string, port int) *Registra
 }
 
 // Run registrator
-func (r *Registrator) Run(log *logrus.Entry) {
+func (r *Registrator) Run(log *logrus.Entry) error {
 	ticker := time.NewTicker(r.tickerDuration)
 	//nolint:megacheck
 	for {
@@ -44,15 +45,16 @@ func (r *Registrator) Run(log *logrus.Entry) {
 				continue
 			}
 			r.registered = true
-			return
+			return nil
 		}
 	}
 }
 
-//Unregister unregister from gateway
-func (r *Registrator) Unregister(log *logrus.Entry) {
+//Shutdown unregister from gateway
+func (r *Registrator) Shutdown(ctx context.Context, log *logrus.Entry) error {
 	if !r.registered {
 		log.Info("Deployment was not registered")
+		return nil
 	}
 	err := r.client.Unregister(log, &ServiceData{
 		Host: r.host,
@@ -60,6 +62,8 @@ func (r *Registrator) Unregister(log *logrus.Entry) {
 	})
 	if err != nil {
 		log.WithError(err).Error("Can't unregister deployment")
+		return err
 	}
 	log.Info("Deployment unregistered")
+	return nil
 }

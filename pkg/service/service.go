@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/makerdao/testchain-deployment/pkg/config"
 	"github.com/makerdao/testchain-deployment/pkg/deploy"
@@ -11,6 +13,7 @@ import (
 	shttp "github.com/makerdao/testchain-deployment/pkg/service/http"
 	"github.com/makerdao/testchain-deployment/pkg/service/methods"
 	"github.com/makerdao/testchain-deployment/pkg/storage"
+	"github.com/makerdao/testchain-deployment/pkg/system"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,9 +31,6 @@ func Run(log *logrus.Entry, cfg *config.Config) error {
 		log.WithError(err).Error("Can't first update source")
 		return err
 	}
-	// run assync registration on gateway and unrigistration on end of work
-	go gatewayRegistrator.Run(log)
-	defer gatewayRegistrator.Unregister(log)
 	// register methods in handler
 	handler := shttp.NewHandler(log)
 	if err := handler.AddMethod("GetInfo", methodsComponent.GetInfo); err != nil {
@@ -46,12 +46,58 @@ func Run(log *logrus.Entry, cfg *config.Config) error {
 	mux := http.NewServeMux()
 	mux.Handle("/rpc", handler)
 
-	httpServ := http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: mux,
+	httpServ := &HTTPServer{
+		Storage: inMemStorage,
+		Server: http.Server{
+			Addr:    fmt.Sprintf(":%d", cfg.Port),
+			Handler: mux,
+		},
 	}
-	if err := httpServ.ListenAndServe(); err != nil {
+
+	// operator for async group work and correct shutdown
+	operator := system.NewOperator(
+		log,
+		httpServ,
+		gatewayRegistrator,
+	)
+	signals := system.NewSignals(operator.GetErrCh())
+	operator.Run()
+
+	return signals.Wait(log, operator)
+}
+
+type HTTPServerStorage interface {
+	GetUpdate() bool
+	GetRun() bool
+}
+
+type HTTPServer struct {
+	Storage HTTPServerStorage
+	http.Server
+}
+
+func (s *HTTPServer) Run(log *logrus.Entry) error {
+	return s.ListenAndServe()
+}
+
+func (s *HTTPServer) Shutdown(ctx context.Context, log *logrus.Entry) error {
+	// stop http server for new request
+	err := s.Server.Shutdown(ctx)
+	//wait while all operations will be finished
+	opCh := make(chan struct{})
+	go func() {
+		for {
+			if !s.Storage.GetRun() {
+				opCh <- struct{}{}
+				return
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
+	select {
+	case <-opCh:
 		return err
+	case <-ctx.Done():
+		return fmt.Errorf("context cancalled, but operations not colmpleted, server err: %s", err.Error())
 	}
-	return nil
 }
