@@ -9,7 +9,18 @@
 
 ## Build and run
 
-See `Makefile`
+### Local
+
+* install dapp and all requirements for [deployment scripts](https://github.com/makerdao/testchain-dss-deployment-scripts)
+* Run application
+  * `TCD_DEPLOY="deploymentDirPath=$HOME/deployment" make run GOOS=darwin` - for mac
+  * `TCD_DEPLOY="deploymentDirPath=$HOME/deployment" make run GOOS=linux` - for linux
+
+### Docker(prefer)
+
+* run `make build-base-image` - only first time, create big image with dapp, bash, git.
+* use `make run-image` - for rebuild rerun app
+* use `make logs` - for show logs -f from container
 
 ## Configuring
 

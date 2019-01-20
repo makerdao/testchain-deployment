@@ -24,25 +24,17 @@ func (m *Methods) Run(
 		return nil, serror.NewUnmarshalReqErr(err)
 	}
 
+	if m.storage.GetUpdate() {
+		return nil, serror.New(serror.ErrCodeInternalError, "Deploy script updating in progress")
+	}
 	if m.storage.GetRun() {
-		return nil, serror.New(serror.ErrCodeBadRequest, "Deployment already run")
+		return nil, serror.New(serror.ErrCodeInternalError, "Deploy script running in progress")
 	}
 
 	go func(id string, req RunRequest) {
 		resultReq := &gateway.RunResultRequest{
 			ID: id,
 		}
-		if err := m.storage.SetRun(true); err != nil {
-			if err := m.gatewayClient.RunResult(log, resultReq.SetErr(err)); err != nil {
-				log.WithError(err).Error("Can't send request with result of run to gateway with error")
-			}
-			return
-		}
-		defer func() {
-			if err := m.storage.SetRun(false); err != nil {
-				log.WithError(err).Error("Can't reset run status")
-			}
-		}()
 		if resErr := m.deployComponent.RunStep(log, req.StepID); resErr != nil {
 			resultReq.Type = gateway.RunResultRequestTypeErr
 			errResBytes, err := json.Marshal(resErr)

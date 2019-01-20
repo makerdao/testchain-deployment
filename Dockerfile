@@ -1,11 +1,10 @@
-FROM bash:5.0.0
+FROM testchain-deployment-base:latest
 
 ENV TCD_PORT 5001
 
 EXPOSE $TCD_PORT
 
-RUN mkdir /deployment && \
-    mkdir /downloaded
+VOLUME /root/.ssh
 
 COPY certs /etc/ssl/certs/
 COPY ./bin/linux-amd64/service /service

@@ -3,6 +3,8 @@ package deploy
 import (
 	"encoding/base64"
 	"encoding/json"
+
+	"github.com/makerdao/testchain-deployment/pkg/command"
 )
 
 //StepModel - we put data from json to that struct
@@ -29,6 +31,10 @@ func NewResultErrorModelFromTxt(msg string) *ResultErrorModel {
 	return &ResultErrorModel{
 		Msg: msg,
 	}
+}
+
+func NewResultErrorModelFromCmd(err *command.Error) *ResultErrorModel {
+	return NewResultErrorModelFromErr(err.Message).WithStderr(err.Stderr)
 }
 
 func (m *ResultErrorModel) WithStderr(stderr []byte) *ResultErrorModel {

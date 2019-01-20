@@ -1,7 +1,6 @@
 package deploy
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,8 +10,10 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/makerdao/testchain-deployment/pkg/dapp"
+
+	"github.com/makerdao/testchain-deployment/pkg/command"
 	"github.com/makerdao/testchain-deployment/pkg/github"
-	"github.com/mholt/archiver"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,15 +21,20 @@ import (
 type StorageInterface interface {
 	UpsertStepList(log *logrus.Entry, modelList []StepModel) error
 	GetStepList(log *logrus.Entry) ([]StepModel, error)
-	HasStepList(log *logrus.Entry, id int) (bool, error)
+	HasStep(log *logrus.Entry, id int) (bool, error)
 	SetTagHash(log *logrus.Entry, hash string) error
 	GetTagHash(log *logrus.Entry) (hash string, err error)
+	SetUpdate(run bool) error
+	GetUpdate() bool
+	SetRun(run bool) error
+	GetRun() bool
 }
 
 // Component is main module of deploy
 type Component struct {
 	cfg            Config
 	githubClient   *github.Client
+	dappClient     *dapp.Client
 	stepNameRegexp *regexp.Regexp
 	storage        StorageInterface
 }
@@ -53,46 +59,53 @@ func (c *Component) GetTagHash(log *logrus.Entry) (string, error) {
 	return c.storage.GetTagHash(log)
 }
 
-//RemoveSourceDirIfExists remove source dir if exist
-func (c *Component) RemoveSourceDirIfExists() error {
-	path := c.getStepListFilePath()
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+func (c *Component) MkDeploymentDirIfNotExists(log *logrus.Entry) error {
+	_, err := os.Stat(c.cfg.DeploymentDirPath)
+	if os.IsExist(err) {
 		return nil
 	}
-	if err := os.RemoveAll(path); err != nil {
-		return err
-	}
-	return nil
-}
-
-//CleanData clean all external data(github data and deployment data)
-func (c *Component) CleanData() error {
-	if err := c.RemoveSourceDirIfExists(); err != nil {
-		return err
-	}
-	if err := c.githubClient.RemoveArchiveIfExists(); err != nil {
-		return err
-	}
-	return nil
+	return os.MkdirAll(c.cfg.DeploymentDirPath, 0755)
 }
 
 //UpdateSource from github and prepare for work with it
 func (c *Component) UpdateSource(log *logrus.Entry) error {
-	if err := c.CleanData(); err != nil {
+	if err := c.storage.SetUpdate(true); err != nil {
 		return err
 	}
-	tagHash, err := c.githubClient.GetTagHash(log.WithField("component", "gitClient"))
-	if err != nil {
+	defer func() {
+		if err := c.storage.SetUpdate(false); err != nil {
+			log.WithError(err).Error("Can't reset update status")
+		}
+	}()
+
+	if err := c.MkDeploymentDirIfNotExists(log); err != nil {
+		log.WithError(err).Error("Can't create dir for deployment")
 		return err
 	}
-	filePath, err := c.githubClient.DownloadTarGzSourceCode(log)
-	if err != nil {
+	if err := c.githubClient.CleanIfExists(log); err != nil {
+		log.WithError(err).Error("Can't clean deployment dir")
 		return err
 	}
-	tar := archiver.NewTarGz()
-	tar.ImplicitTopLevelFolder = false
-	if err := tar.Unarchive(filePath, c.cfg.DeploymentDirPath); err != nil {
-		return err
+	if cmdErr := c.githubClient.CloneCmd(log); cmdErr != nil {
+		log.WithError(cmdErr).Error("Can't clone deployment")
+		return cmdErr
+	}
+	if cmdErr := c.githubClient.UpdateSubmodulesCmd(log); cmdErr != nil {
+		log.WithError(cmdErr).Error("Can't update submodules deployment")
+		return cmdErr
+	}
+	if cmdErr := c.githubClient.CheckoutCmd(log, nil); cmdErr != nil {
+		log.WithError(cmdErr).Error("Can't checkout to tag")
+		return cmdErr
+	}
+	if cmdErr := c.dappClient.UpdateCmd(c.githubClient.GetRepoPath()); cmdErr != nil {
+		log.WithError(cmdErr).Error("Can't dapp update")
+		return cmdErr
+	}
+
+	tagHash, cmdErr := c.githubClient.LastHashCommitCmd(log)
+	if cmdErr != nil {
+		return cmdErr
 	}
 
 	stepList, err := c.getStepList(log)
@@ -116,29 +129,35 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 // RunStep run step command
 // TODO run with ctx, and ability for stop
 func (c *Component) RunStep(log *logrus.Entry, stepID int) *ResultErrorModel {
-	hasStep, err := c.storage.HasStepList(log, stepID)
+	if err := c.storage.SetRun(true); err != nil {
+		return NewResultErrorModelFromErr(err)
+	}
+	defer func() {
+		if err := c.storage.SetRun(false); err != nil {
+			log.WithError(err).Error("Can't reset run status")
+		}
+	}()
+
+	hasStep, err := c.storage.HasStep(log, stepID)
 	if err != nil {
 		return NewResultErrorModelFromErr(err)
 	}
 	if !hasStep {
 		return NewResultErrorModelFromTxt("unknown id of step")
 	}
-	commandName := fmt.Sprintf("./step-%d-deploy", stepID)
-	cmd := exec.Command(commandName)
-	stdErrBuf := bytes.NewBufferString("")
-	cmd.Stderr = stdErrBuf
-	cmd.Dir = c.getStepListFilePath()
-	if err := cmd.Run(); err != nil {
-		log.WithError(err).Error("Cmd running error")
-		log.Debugf("Cmd running error trace: %s", stdErrBuf.String())
-		return NewResultErrorModelFromErr(err).WithStderr(stdErrBuf.Bytes())
+	cmd := command.New(exec.Command(fmt.Sprintf("./step-%d-deploy", stepID))).
+		WithDir(c.githubClient.GetRepoPath())
+	if cmdErr := cmd.Run(); cmdErr != nil {
+		log.WithError(cmdErr.Message).Error("Cmd running error")
+		log.Debugf("Cmd running error trace: %s", string(cmdErr.Stderr))
+		return NewResultErrorModelFromCmd(cmdErr)
 	}
 	return nil
 }
 
 func (c *Component) getStepList(log *logrus.Entry) ([]StepModel, error) {
 	stepList := make([]StepModel, 0)
-	dirPath := c.getStepListFilePath()
+	dirPath := c.githubClient.GetRepoPath()
 	log.Debugf("Read step list from: %s", dirPath)
 	wErr := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -182,8 +201,4 @@ func readStepDescriptionFile(path string) (*StepModel, error) {
 		return nil, err
 	}
 	return &model, nil
-}
-
-func (c *Component) getStepListFilePath() string {
-	return filepath.Join(c.cfg.DeploymentDirPath, c.githubClient.GetDirInArchiveFromCfg(), c.cfg.DeploymentSubPath)
 }

@@ -13,24 +13,15 @@ func (m *Methods) Update(
 	requestBytes []byte,
 ) (response []byte, error *serror.Error) {
 	if m.storage.GetUpdate() {
-		return nil, serror.New(serror.ErrCodeBadRequest, "Update source already run")
+		return nil, serror.New(serror.ErrCodeInternalError, "Deploy script updating in progress")
 	}
-
+	if m.storage.GetRun() {
+		return nil, serror.New(serror.ErrCodeInternalError, "Deploy script running in progress")
+	}
 	go func(id string) {
 		resultReq := &gateway.UpdateResultRequest{
 			ID: id,
 		}
-		if err := m.storage.SetUpdate(true); err != nil {
-			if err := m.gatewayClient.UpdateResult(log, resultReq.SetErr(err)); err != nil {
-				log.WithError(err).Error("Can't send request with result of run to gateway with error")
-			}
-			return
-		}
-		defer func() {
-			if err := m.storage.SetUpdate(false); err != nil {
-				log.WithError(err).Error("Can't reset update status")
-			}
-		}()
 		if err := m.deployComponent.UpdateSource(log); err != nil {
 			if err := m.gatewayClient.UpdateResult(log, resultReq.SetErr(err)); err != nil {
 				log.WithError(err).Error("Can't send request with result of run to gateway with error")

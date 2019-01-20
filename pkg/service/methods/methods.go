@@ -11,9 +11,7 @@ type StorageInterface interface {
 	GetStepList(log *logrus.Entry) ([]deploy.StepModel, error)
 	GetTagHash(log *logrus.Entry) (hash string, err error)
 	HasData() bool
-	SetRun(run bool) error
 	GetRun() bool
-	SetUpdate(run bool) error
 	GetUpdate() bool
 }
 

@@ -4,9 +4,9 @@ SRV = $(notdir $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
 PROJECT = github.com/makerdao/${SRV}
 TAG ?= latest
 PORT ?= 5001
-API_TOKEN ?= $(shell cat .apiToken)
 CA_DIR ?= certs
 PWD ?= $(pwd)
+REGISTRY ?=
 
 build: vendor lint certs
 	@echo "+ $@ ${GOOS}"
@@ -28,7 +28,7 @@ run: build
 test:
 	@echo "+ $@"
 	@mkdir ${PWD}/.testdir && echo "testdir created" || echo "testdir already exists"
-	@TCD_GITHUB="apiToken=${API_TOKEN};workDir=${PWD}/.testdir" go test -count=1 -parallel 1 ./...
+	@go test -count=1 -parallel 1 ./...
 .PHONY: test
 
 lint:
@@ -40,7 +40,12 @@ lint:
 
 build-image: build
 	@echo "+ $@"
-	@docker build -t ${SRV}:${TAG} .
+	@docker build -t ${REGISTRY}${SRV}:${TAG} .
+.PHONY: build-image
+
+build-base-image:
+	@echo "+ $@"
+	@docker build -t ${REGISTRY}${SRV}-base:${TAG} -f base.Dockerfile .
 .PHONY: build-image
 
 stop-image:
@@ -53,7 +58,7 @@ run-image: stop-image build-image
 	@echo "+ $@"
 	@docker run -d -p ${PORT}:${PORT} \
 		-e TCD_PORT='${PORT}' \
-		-e TCD_GITHUB="apiToken=${API_TOKEN}" \
+		-v ~/.ssh:/root/.ssh \
 		--name=${SRV} ${SRV}:${TAG}
 .PHONY: run-image
 

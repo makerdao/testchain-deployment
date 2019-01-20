@@ -51,8 +51,11 @@ func (s *InMemory) GetStepList(log *logrus.Entry) ([]deploy.StepModel, error) {
 	return res, nil
 }
 
-func (s *InMemory) HasStepList(log *logrus.Entry, id int) (bool, error) {
-	return len(s.modelMap) > 0, nil
+func (s *InMemory) HasStep(log *logrus.Entry, id int) (bool, error) {
+	if _, ok := s.modelMap[id]; ok {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (s *InMemory) SetTagHash(log *logrus.Entry, hash string) error {

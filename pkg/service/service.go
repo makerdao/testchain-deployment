@@ -19,12 +19,13 @@ func Run(log *logrus.Entry, cfg *config.Config) error {
 	// init components
 	gatewayClient := gateway.NewClient(cfg.Gateway)
 	gatewayRegistrator := gateway.NewRegistrator(cfg.Gateway, gatewayClient, cfg.Host, cfg.Port)
-	githubClient := github.NewClient(cfg.Github)
+	githubClient := github.NewClient(cfg.Github, cfg.Deploy.DeploymentDirPath)
 	inMemStorage := storage.NewInMemory()
 	deployComponent := deploy.New(cfg.Deploy, githubClient, inMemStorage)
 	methodsComponent := methods.NewMethods(inMemStorage, deployComponent, gatewayClient)
 	// first load source
 	if err := deployComponent.UpdateSource(log); err != nil {
+		log.WithError(err).Error("Can't first update source")
 		return err
 	}
 	// run assync registration on gateway and unrigistration on end of work
