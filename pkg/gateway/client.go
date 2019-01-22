@@ -160,7 +160,7 @@ func (c *Client) req(log *logrus.Entry, method string, reqBytes json.RawMessage)
 	if err != nil {
 		return nil, err
 	}
-	httpReq.Header.Add("ContentType", "application/json")
+	httpReq.Header.Add("Content-Type", "application/json")
 
 	httpResp, err := c.client.Do(httpReq)
 	if err != nil {

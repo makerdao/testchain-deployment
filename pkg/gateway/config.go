@@ -58,7 +58,7 @@ func (c *Config) Decode(data string) error {
 func GetDefaultConfig() Config {
 	return Config{
 		Host:                  "testchain-backendgateway",
-		Port:                  5000,
+		Port:                  4000,
 		ClientTimeoutInSecond: 5,
 		RegisterPeriodInSec:   10,
 	}
