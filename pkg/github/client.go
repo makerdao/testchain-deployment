@@ -28,12 +28,17 @@ func NewClient(cfg Config, baseDir string) *Client {
 	}
 }
 
-//GetRepoName return name of repo
+//GetRepoName return name of repo for work
 func (c *Client) GetRepoPath() string {
 	return filepath.Join(c.baseDir, c.cfg.RepoName)
 }
 
-func (c *Client) CleanIfExists(log *logrus.Entry) error {
+//GetLoadingPath return name of repo for loading
+func (c *Client) GetLoadingPath() string {
+	return filepath.Join(c.baseDir, c.cfg.RepoName+"-loading")
+}
+
+func (c *Client) CleanRepoIfExists(log *logrus.Entry) error {
 	if _, err := os.Stat(c.GetRepoPath()); os.IsNotExist(err) {
 		return nil
 	}
@@ -43,22 +48,41 @@ func (c *Client) CleanIfExists(log *logrus.Entry) error {
 	return nil
 }
 
+//CleanLoadingRepoIfExists clean path for loading repo
+func (c *Client) CleanLoadingRepoIfExists(log *logrus.Entry) error {
+	if _, err := os.Stat(c.GetLoadingPath()); os.IsNotExist(err) {
+		return nil
+	}
+	if err := os.RemoveAll(c.GetLoadingPath()); err != nil {
+		return err
+	}
+	return nil
+}
+
+//CloneCmd is git clone command
 func (c *Client) CloneCmd(log *logrus.Entry) *command.Error {
 	return command.New(
-		exec.Command("git", "clone", fmt.Sprintf(cloneTmplt, c.cfg.RepoOwner, c.cfg.RepoName)),
+		exec.Command(
+			"git",
+			"clone",
+			fmt.Sprintf(cloneTmplt, c.cfg.RepoOwner, c.cfg.RepoName),
+			c.GetLoadingPath(),
+		),
 	).
 		WithDir(c.baseDir).
 		Run()
 }
 
+//UpdateSubmodulesCmd run update submodules
 func (c *Client) UpdateSubmodulesCmd(log *logrus.Entry) *command.Error {
 	return command.New(
 		exec.Command("git", "submodule", "update", "--init"),
 	).
-		WithDir(c.GetRepoPath()).
+		WithDir(c.GetLoadingPath()).
 		Run()
 }
 
+//CheckoutCmd checkout to id(for example tag or branch), if empty checkout to tag from settings
 func (c *Client) CheckoutCmd(log *logrus.Entry, id *string) *command.Error {
 	if id == nil {
 		id = new(string)
@@ -67,10 +91,11 @@ func (c *Client) CheckoutCmd(log *logrus.Entry, id *string) *command.Error {
 	return command.New(
 		exec.Command("git", "checkout", *id),
 	).
-		WithDir(c.GetRepoPath()).
+		WithDir(c.GetLoadingPath()).
 		Run()
 }
 
+//LastHashCommitCmd return string with hash commit for tag
 func (c *Client) LastHashCommitCmd(log *logrus.Entry) (string, *command.Error) {
 	cmd := command.New(
 		exec.Command("git", "rev-parse", "HEAD"),

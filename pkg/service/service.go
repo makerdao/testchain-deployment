@@ -27,10 +27,12 @@ func Run(log *logrus.Entry, cfg *config.Config) error {
 	deployComponent := deploy.New(cfg.Deploy, githubClient, inMemStorage)
 	methodsComponent := methods.NewMethods(inMemStorage, deployComponent, gatewayClient)
 	// first load source
+	log.Info("First update src started, it take a few minutes")
 	if err := deployComponent.UpdateSource(log); err != nil {
 		log.WithError(err).Error("Can't first update source")
 		return err
 	}
+	log.Info("First update src finished")
 	// register methods in handler
 	handler := shttp.NewHandler(log)
 	if err := handler.AddMethod("GetInfo", methodsComponent.GetInfo); err != nil {

@@ -10,9 +10,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/makerdao/testchain-deployment/pkg/dapp"
-
 	"github.com/makerdao/testchain-deployment/pkg/command"
+	"github.com/makerdao/testchain-deployment/pkg/dapp"
 	"github.com/makerdao/testchain-deployment/pkg/github"
 	"github.com/sirupsen/logrus"
 )
@@ -28,6 +27,7 @@ type StorageInterface interface {
 	GetUpdate() bool
 	SetRun(run bool) error
 	GetRun() bool
+	SetUpdatedAtNow() error
 }
 
 // Component is main module of deploy
@@ -59,6 +59,7 @@ func (c *Component) GetTagHash(log *logrus.Entry) (string, error) {
 	return c.storage.GetTagHash(log)
 }
 
+// MkDeploymentDirIfNotExists create base dir for work if not exists
 func (c *Component) MkDeploymentDirIfNotExists(log *logrus.Entry) error {
 	_, err := os.Stat(c.cfg.DeploymentDirPath)
 	if os.IsExist(err) {
@@ -82,7 +83,7 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 		log.WithError(err).Error("Can't create dir for deployment")
 		return err
 	}
-	if err := c.githubClient.CleanIfExists(log); err != nil {
+	if err := c.githubClient.CleanLoadingRepoIfExists(log); err != nil {
 		log.WithError(err).Error("Can't clean deployment dir")
 		return err
 	}
@@ -98,8 +99,16 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 		log.WithError(cmdErr).Error("Can't checkout to tag")
 		return cmdErr
 	}
-	if cmdErr := c.dappClient.UpdateCmd(c.githubClient.GetRepoPath()); cmdErr != nil {
+	if cmdErr := c.dappClient.UpdateCmd(c.githubClient.GetLoadingPath()); cmdErr != nil {
 		log.WithError(cmdErr).Error("Can't dapp update")
+		return cmdErr
+	}
+
+	// if we have error while downloading repo, we can work with prev version of repo
+	cmdErr := command.New(
+		exec.Command("cp", "-r", c.githubClient.GetLoadingPath(), c.githubClient.GetRepoPath()),
+	).Run()
+	if cmdErr != nil {
 		return cmdErr
 	}
 
@@ -118,6 +127,10 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 	}
 
 	if err := c.storage.SetTagHash(log, tagHash); err != nil {
+		return err
+	}
+
+	if err := c.storage.SetUpdatedAtNow(); err != nil {
 		return err
 	}
 

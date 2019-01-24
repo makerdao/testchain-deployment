@@ -1,6 +1,8 @@
 package methods
 
 import (
+	"time"
+
 	"github.com/makerdao/testchain-deployment/pkg/deploy"
 	"github.com/makerdao/testchain-deployment/pkg/gateway"
 	"github.com/sirupsen/logrus"
@@ -13,6 +15,7 @@ type StorageInterface interface {
 	HasData() bool
 	GetRun() bool
 	GetUpdate() bool
+	GetUpdatedAt() (*time.Time, error)
 }
 
 //Methods is main methods struct as container for DI

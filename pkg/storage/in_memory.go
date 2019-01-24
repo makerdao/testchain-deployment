@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/makerdao/testchain-deployment/pkg/deploy"
 	"github.com/sirupsen/logrus"
@@ -10,13 +11,14 @@ import (
 
 //InMemory implementation of storage, use mutex for data consistent
 type InMemory struct {
-	hasHash  bool
-	hasList  bool
-	run      bool
-	update   bool
-	hash     string
-	modelMap map[int]deploy.StepModel
-	mu       sync.Mutex
+	hasHash   bool
+	hasList   bool
+	run       bool
+	update    bool
+	hash      string
+	modelMap  map[int]deploy.StepModel
+	mu        sync.Mutex
+	updatedAt time.Time
 }
 
 //NewInMemory init storaga
@@ -100,4 +102,15 @@ func (s *InMemory) SetUpdate(update bool) error {
 
 func (s *InMemory) GetUpdate() bool {
 	return s.update
+}
+
+func (s *InMemory) SetUpdatedAtNow() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.updatedAt = time.Now()
+	return nil
+}
+
+func (s *InMemory) GetUpdatedAt() (*time.Time, error) {
+	return &s.updatedAt, nil
 }

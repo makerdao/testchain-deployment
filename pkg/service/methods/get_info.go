@@ -2,6 +2,7 @@ package methods
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/makerdao/testchain-deployment/pkg/deploy"
 	"github.com/makerdao/testchain-deployment/pkg/serror"
@@ -10,8 +11,9 @@ import (
 
 //GetInfoResponse response struct
 type GetInfoResponse struct {
-	Steps   []deploy.StepModel `json:"steps"`
-	TagHash string             `json:"tagHash"`
+	UpdatedAt time.Time          `json:"updatedAt"`
+	Steps     []deploy.StepModel `json:"steps"`
+	TagHash   string             `json:"tagHash"`
 }
 
 //GetInfo return info about steps and commit's hash of tag
@@ -33,9 +35,15 @@ func (m *Methods) GetInfo(
 		return nil, serror.New(serror.ErrCodeInternalError, "Can't get step list")
 	}
 
+	updatedAt, err := m.storage.GetUpdatedAt()
+	if err != nil {
+		return nil, serror.New(serror.ErrCodeInternalError, "Can't get last update date")
+	}
+
 	resp := GetInfoResponse{
-		Steps:   stepList,
-		TagHash: hash,
+		Steps:     stepList,
+		TagHash:   hash,
+		UpdatedAt: *updatedAt,
 	}
 
 	respBytes, err := json.Marshal(resp)
