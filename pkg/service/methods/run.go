@@ -10,7 +10,8 @@ import (
 
 //RunRequest request data
 type RunRequest struct {
-	StepID int `json:"stepId"`
+	StepID  int               `json:"stepId"`
+	EnvVars map[string]string `json:"envVars"`
 }
 
 //Run deployment async and return ok if it possible
@@ -35,7 +36,7 @@ func (m *Methods) Run(
 		resultReq := &gateway.RunResultRequest{
 			ID: id,
 		}
-		if resErr := m.deployComponent.RunStep(log, req.StepID); resErr != nil {
+		if resErr := m.deployComponent.RunStep(log, req.StepID, req.EnvVars); resErr != nil {
 			resultReq.Type = gateway.RunResultRequestTypeErr
 			errResBytes, err := json.Marshal(resErr)
 			if err != nil {

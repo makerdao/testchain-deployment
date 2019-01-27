@@ -141,7 +141,7 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 
 // RunStep run step command
 // TODO run with ctx, and ability for stop
-func (c *Component) RunStep(log *logrus.Entry, stepID int) *ResultErrorModel {
+func (c *Component) RunStep(log *logrus.Entry, stepID int, envVars map[string]string) *ResultErrorModel {
 	if err := c.storage.SetRun(true); err != nil {
 		return NewResultErrorModelFromErr(err)
 	}
@@ -159,7 +159,8 @@ func (c *Component) RunStep(log *logrus.Entry, stepID int) *ResultErrorModel {
 		return NewResultErrorModelFromTxt("unknown id of step")
 	}
 	cmd := command.New(exec.Command(fmt.Sprintf("./step-%d-deploy", stepID))).
-		WithDir(c.githubClient.GetRepoPath())
+		WithDir(c.githubClient.GetRepoPath()).
+		WithEnvVarsMap(envVars)
 	if cmdErr := cmd.Run(); cmdErr != nil {
 		log.WithError(cmdErr.Message).Error("Cmd running error")
 		log.Debugf("Cmd running error trace: %s", string(cmdErr.Stderr))
