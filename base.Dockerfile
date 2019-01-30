@@ -1,6 +1,6 @@
 FROM nixos/nix:2.1.3
 
-RUN apk add --no-cache git bash openssh && \
+RUN apk add --no-cache git bash openssh jq && \
     . "$HOME/.nix-profile/etc/profile.d/nix.sh" && \
     nix-env -if https://github.com/cachix/cachix/tarball/master \
         --substituters https://cachix.cachix.org \

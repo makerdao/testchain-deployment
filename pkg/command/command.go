@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -28,9 +29,11 @@ func (c *Command) WithDir(dir string) *Command {
 
 //WithEnvVarsMap add env vars to command from map
 func (c *Command) WithEnvVarsMap(vars map[string]string) *Command {
+	newEnv := os.Environ()
 	for env, val := range vars {
-		c.Env = append(c.Env, fmt.Sprintf(`%s="%s"`, env, val))
+		newEnv = append(newEnv, fmt.Sprintf("%s=%s", env, val))
 	}
+	c.Env = newEnv
 	return c
 }
 
