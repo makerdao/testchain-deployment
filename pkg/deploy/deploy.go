@@ -105,6 +105,10 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 	}
 
 	// if we have error while downloading repo, we can work with prev version of repo
+	if err := c.githubClient.CleanRepoIfExists(log); err != nil {
+		log.WithError(err).Error("Can't clean deployment dir")
+		return err
+	}
 	cmdErr := command.New(
 		exec.Command("cp", "-r", c.githubClient.GetLoadingPath(), c.githubClient.GetRepoPath()),
 	).Run()

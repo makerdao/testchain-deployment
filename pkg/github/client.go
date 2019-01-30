@@ -76,7 +76,7 @@ func (c *Client) CloneCmd(log *logrus.Entry) *command.Error {
 //UpdateSubmodulesCmd run update submodules
 func (c *Client) UpdateSubmodulesCmd(log *logrus.Entry) *command.Error {
 	return command.New(
-		exec.Command("git", "submodule", "update", "--init"),
+		exec.Command("git", "submodule", "update", "--init", "--recursive"),
 	).
 		WithDir(c.GetLoadingPath()).
 		Run()
