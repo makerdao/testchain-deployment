@@ -3,6 +3,7 @@ package deploy
 import (
 	"encoding/base64"
 	"encoding/json"
+	"time"
 
 	"github.com/makerdao/testchain-deployment/pkg/command"
 )
@@ -40,4 +41,15 @@ func NewResultErrorModelFromCmd(err *command.Error) *ResultErrorModel {
 func (m *ResultErrorModel) WithStderr(stderr []byte) *ResultErrorModel {
 	m.StderrB64 = base64.StdEncoding.EncodeToString(stderr)
 	return m
+}
+
+//ResultModel is struct for result of run
+type ResultModel struct {
+	LastUpdated time.Time       `json:"lastUpdated"`
+	Data        json.RawMessage `json:"data"`
+}
+
+//NewResultModel init model of result
+func NewResultModel(lastUpdated time.Time, data json.RawMessage) *ResultModel {
+	return &ResultModel{LastUpdated: lastUpdated, Data: data}
 }

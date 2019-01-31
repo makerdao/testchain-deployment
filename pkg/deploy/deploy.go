@@ -173,6 +173,20 @@ func (c *Component) RunStep(log *logrus.Entry, stepID int, envVars map[string]st
 	return nil
 }
 
+//ReadResult from configured file
+func (c *Component) ReadResult() (*ResultModel, *ResultErrorModel) {
+	fileName := filepath.Join(c.githubClient.GetRepoPath(), c.cfg.ResultSubPath)
+	fi, err := os.Stat(fileName)
+	if err != nil {
+		return nil, NewResultErrorModelFromErr(err)
+	}
+	data, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, NewResultErrorModelFromErr(err)
+	}
+	return NewResultModel(fi.ModTime(), data), nil
+}
+
 func (c *Component) getStepList(log *logrus.Entry) ([]StepModel, error) {
 	stepList := make([]StepModel, 0)
 	dirPath := c.githubClient.GetRepoPath()

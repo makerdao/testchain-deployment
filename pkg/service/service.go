@@ -44,6 +44,9 @@ func Run(log *logrus.Entry, cfg *config.Config) error {
 	if err := handler.AddMethod("UpdateSource", methodsComponent.Update); err != nil {
 		return err
 	}
+	if err := handler.AddMethod("GetResult", methodsComponent.GetResult); err != nil {
+		return err
+	}
 	// init and run http server
 	mux := http.NewServeMux()
 	mux.Handle("/rpc", handler)

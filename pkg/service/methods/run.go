@@ -48,7 +48,25 @@ func (m *Methods) Run(
 			}
 			return
 		}
+		res, resErr := m.deployComponent.ReadResult()
+		if resErr != nil {
+			resultReq.Type = gateway.RunResultRequestTypeErr
+			errResBytes, err := json.Marshal(resErr)
+			if err != nil {
+				log.WithError(err).Error("Can't marshal error for read result")
+			}
+			resultReq.Result = errResBytes
+			if err := m.gatewayClient.RunResult(log, resultReq); err != nil {
+				log.WithError(err).Error("Can't send request with result of run to gateway with error")
+			}
+			return
+		}
+		resBytes, err := json.Marshal(res)
+		if err != nil {
+			log.WithError(err).Error("Can't marshal error for run result")
+		}
 		resultReq.Type = gateway.RunResultRequestTypeOK
+		resultReq.Result = resBytes
 		if err := m.gatewayClient.RunResult(log, resultReq); err != nil {
 			log.WithError(err).Error("Can't send request with result of run to gateway")
 		}
