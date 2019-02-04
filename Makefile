@@ -3,6 +3,7 @@ GOARCH ?= amd64
 SRV = $(notdir $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
 PROJECT = github.com/makerdao/${SRV}
 TAG ?= latest
+BUILD ?= `git rev-parse --short HEAD`
 PORT ?= 5001
 CA_DIR ?= certs
 PWD ?= $(pwd)
@@ -40,7 +41,9 @@ lint:
 
 build-image: build
 	@echo "+ $@"
-	@docker build -t ${REGISTRY}${SRV}:${TAG} .
+	@docker build \
+		-t ${REGISTRY}${SRV}:${BUILD} \
+		-t ${REGISTRY}${SRV}:${TAG} .
 .PHONY: build-image
 
 build-base-image:
