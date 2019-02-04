@@ -7,5 +7,6 @@ RUN apk add --no-cache git bash openssh jq && \
         --trusted-public-keys cachix.cachix.org-1:eWNHQldwUO7G2VkjpnjDbWwy4KQ/HNxht7H4SSoMckM= && \
     cachix use dapp && \
     git clone --recursive https://github.com/dapphub/dapptools $HOME/.dapp/dapptools && \
-    nix-env -f $HOME/.dapp/dapptools -iA dapp seth solc hevm ethsign && \
-    rm -rf /var/cache/apk/*
+    nix-env -f $HOME/.dapp/dapptools -iA dapp seth solc ethsign && \
+    rm -rf /var/cache/apk/* && \
+    nix-collect-garbage -d

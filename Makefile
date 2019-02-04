@@ -62,6 +62,16 @@ run-image: stop-image build-image
 		--name=${SRV} ${SRV}:${TAG}
 .PHONY: run-image
 
+run-image-local: stop-image build-image
+	@echo "+ $@"
+	@docker run -d -p ${PORT}:${PORT} \
+	    -e TCD_GATEWAY='host=host.docker.internal' \
+		-e TCD_PORT='${PORT}' \
+		-v ~/.ssh:/root/.ssh \
+		--name=${SRV} ${SRV}:${TAG}
+.PHONY: run-image-local
+
+
 logs:
 	@echo "+ $@"
 	@docker logs -f ${SRV}
