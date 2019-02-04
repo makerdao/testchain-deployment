@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/makerdao/testchain-deployment/pkg/command"
 	"github.com/sirupsen/logrus"
@@ -103,5 +104,5 @@ func (c *Client) LastHashCommitCmd(log *logrus.Entry) (string, *command.Error) {
 	if err := cmd.WithDir(c.GetRepoPath()).Run(); err != nil {
 		return "", err
 	}
-	return cmd.Stdout.String(), nil
+	return strings.TrimSuffix(cmd.Stdout.String(), "\n"), nil
 }
