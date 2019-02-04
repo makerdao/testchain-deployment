@@ -6,7 +6,7 @@ TAG ?= latest
 PORT ?= 5001
 CA_DIR ?= certs
 PWD ?= $(pwd)
-REGISTRY ?=
+REGISTRY ?= makerdao/
 
 build: vendor lint certs
 	@echo "+ $@ ${GOOS}"
@@ -45,7 +45,9 @@ build-image: build
 
 build-base-image:
 	@echo "+ $@"
-	@docker build -t ${REGISTRY}${SRV}-base:${TAG} -f base.Dockerfile .
+	@docker build \
+		-t ${REGISTRY}${SRV}-base:${TAG} \
+		-f base.Dockerfile .
 .PHONY: build-image
 
 stop-image:
@@ -59,7 +61,7 @@ run-image: stop-image build-image
 	@docker run -d -p ${PORT}:${PORT} \
 		-e TCD_PORT='${PORT}' \
 		-v ~/.ssh:/root/.ssh \
-		--name=${SRV} ${SRV}:${TAG}
+		--name=${SRV} ${REGISTRY}${SRV}:${TAG}
 .PHONY: run-image
 
 run-image-local: stop-image build-image
@@ -68,7 +70,7 @@ run-image-local: stop-image build-image
 	    -e TCD_GATEWAY='host=host.docker.internal' \
 		-e TCD_PORT='${PORT}' \
 		-v ~/.ssh:/root/.ssh \
-		--name=${SRV} ${SRV}:${TAG}
+		--name=${SRV} ${REGISTRY}${SRV}:${TAG}
 .PHONY: run-image-local
 
 

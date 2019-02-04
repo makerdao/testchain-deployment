@@ -1,4 +1,4 @@
-FROM testchain-deployment-base:latest
+FROM makerdao/testchain-deployment-base:latest
 
 ENV TCD_PORT 5001
 
