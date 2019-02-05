@@ -10,11 +10,13 @@ import (
 
 //StepModel - we put data from json to that struct
 type StepModel struct {
-	ID          int             `json:"id,omitempty"`
-	Description string          `json:"description"`
-	Defaults    json.RawMessage `json:"defaults"`
-	Roles       json.RawMessage `json:"roles"`
-	Oracles     json.RawMessage `json:"oracles"`
+	ID               int             `json:"id,omitempty"`
+	Description      string          `json:"description"`
+	OmniaFromAddress string          `json:"omniaFromAddr"`
+	Defaults         json.RawMessage `json:"defaults"`
+	Roles            json.RawMessage `json:"roles"`
+	Oracles          json.RawMessage `json:"oracles"`
+	Ilks             json.RawMessage `json:"ilks"`
 }
 
 type ResultErrorModel struct {
