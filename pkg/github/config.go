@@ -48,6 +48,6 @@ func GetDefaultConfig() Config {
 	return Config{
 		RepoOwner: "makerdao",
 		RepoName:  "testchain-dss-deployment-scripts",
-		TagName:   "deploy",
+		TagName:   "qa-deploy",
 	}
 }
