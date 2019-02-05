@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	cloneTmplt = "git@github.com:%s/%s.git"
+	cloneTmplt = "https://github.com/%s/%s.git"
 )
 
 //Client of github.com

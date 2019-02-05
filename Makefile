@@ -72,7 +72,6 @@ run-image-local: stop-image build-image
 	@docker run -d -p ${PORT}:${PORT} \
 	    -e TCD_GATEWAY='host=host.docker.internal' \
 		-e TCD_PORT='${PORT}' \
-		-v ~/.ssh:/root/.ssh \
 		--name=${SRV} ${REGISTRY}${SRV}:${TAG}
 .PHONY: run-image-local
 
