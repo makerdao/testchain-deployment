@@ -71,37 +71,37 @@ func (s *Server) Run(log *logrus.Entry) error {
 	return nil
 }
 
-func (s *Server) getAsyncMsgHandler(methodFunc HandlerMethod) natsio.MsgHandler {
-	return func(msg *natsio.Msg) {
-		log := s.log
-		defer func() {
-			if rec := recover(); rec != nil {
-				resp := prepareErrRespBytes(
-					serror.New(serror.ErrCodeBadRequest, fmt.Sprintf("Unexpected internal error, %+v", rec)),
-				)
-				if err := s.conn.Publish(msg.Reply, resp); err != nil {
-					log.WithError(err).
-						WithField("topic", msg.Reply).
-						Error("Can't publish response with err to chanel")
-				}
-			}
-		}()
-		topicParts := strings.Split(msg.Subject, ".")
-		reqID := topicParts[len(topicParts)-1]
-		log = log.WithField("topic", msg.Subject)
-		log.WithField("data", string(msg.Data)).Info("Request")
-		_, sErr := methodFunc(log, reqID, msg.Data)
-		if sErr != nil {
-			errBytes := prepareErrRespBytes(sErr)
-			log.WithField("data", string(errBytes)).Error("Response error")
-			if err := s.conn.Publish(msg.Reply, errBytes); err != nil {
-				log.WithError(err).
-					WithField("topic", msg.Reply).
-					Error("Can't publish response with err to chanel")
-			}
-		}
-	}
-}
+//func (s *Server) getAsyncMsgHandler(methodFunc HandlerMethod) natsio.MsgHandler {
+//	return func(msg *natsio.Msg) {
+//		log := s.log
+//		defer func() {
+//			if rec := recover(); rec != nil {
+//				resp := prepareErrRespBytes(
+//					serror.New(serror.ErrCodeBadRequest, fmt.Sprintf("Unexpected internal error, %+v", rec)),
+//				)
+//				if err := s.conn.Publish(msg.Reply, resp); err != nil {
+//					log.WithError(err).
+//						WithField("topic", msg.Reply).
+//						Error("Can't publish response with err to chanel")
+//				}
+//			}
+//		}()
+//		topicParts := strings.Split(msg.Subject, ".")
+//		reqID := topicParts[len(topicParts)-1]
+//		log = log.WithField("topic", msg.Subject)
+//		log.WithField("data", string(msg.Data)).Info("Request")
+//		_, sErr := methodFunc(log, reqID, msg.Data)
+//		if sErr != nil {
+//			errBytes := prepareErrRespBytes(sErr)
+//			log.WithField("data", string(errBytes)).Error("Response error")
+//			if err := s.conn.Publish(msg.Reply, errBytes); err != nil {
+//				log.WithError(err).
+//					WithField("topic", msg.Reply).
+//					Error("Can't publish response with err to chanel")
+//			}
+//		}
+//	}
+//}
 
 func (s *Server) getSyncMsgHandler(methodFunc HandlerMethod) natsio.MsgHandler {
 	return func(msg *natsio.Msg) {

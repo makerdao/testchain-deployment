@@ -7,23 +7,32 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/makerdao/testchain-deployment/pkg/service/nats"
-
 	"github.com/makerdao/testchain-deployment/pkg/config"
 	"github.com/makerdao/testchain-deployment/pkg/deploy"
 	"github.com/makerdao/testchain-deployment/pkg/gateway"
 	"github.com/makerdao/testchain-deployment/pkg/github"
 	shttp "github.com/makerdao/testchain-deployment/pkg/service/http"
 	"github.com/makerdao/testchain-deployment/pkg/service/methods"
+	"github.com/makerdao/testchain-deployment/pkg/service/nats"
 	"github.com/makerdao/testchain-deployment/pkg/storage"
 	"github.com/makerdao/testchain-deployment/pkg/system"
+	gonats "github.com/nats-io/go-nats"
 	"github.com/sirupsen/logrus"
 )
 
 //Run of service
 func Run(log *logrus.Entry, cfg *config.Config) error {
 	// init components
-	gatewayClient := gateway.NewClient(cfg.Gateway)
+	natsConn, err := gonats.Connect(
+		cfg.NATS.Servers,
+		gonats.MaxReconnects(cfg.NATS.MaxReconnect),
+		gonats.ReconnectWait(time.Duration(cfg.NATS.ReconnectWaitSec)*time.Second),
+	)
+	if err != nil {
+		return err
+	}
+
+	gatewayClient := gateway.NewClient(cfg.Gateway, natsConn, cfg.NATS)
 	gatewayRegistrator := gateway.NewRegistrator(cfg.Gateway, gatewayClient, cfg.Host, cfg.Port)
 	githubClient := github.NewClient(cfg.Github, cfg.Deploy.DeploymentDirPath)
 	inMemStorage := storage.NewInMemory()

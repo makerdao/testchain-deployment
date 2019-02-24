@@ -10,6 +10,8 @@ services:
     networks:
       - net1
   testchain-deployment:
+    depends_on:
+      - nats
     image: makerdao/testchain-deployment:latest
     container_name: testchain-deployment.local
     ports:

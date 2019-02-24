@@ -29,7 +29,7 @@ const EnvPrefix = "TCD"
 func New() *Config {
 	// set default values
 	cfg := &Config{
-		Server:   "NATS",
+		Server:   "HTTP",
 		Host:     "testchain-deployment",
 		Port:     5001,
 		Deploy:   deploy.GetDefaultConfig(),
