@@ -137,6 +137,8 @@ func (s *HTTPServer) Run(log *logrus.Entry) error {
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context, log *logrus.Entry) error {
+	log.Debug("Start graceful shutdown http server")
+	defer log.Debug("Graceful shutdown http server: done")
 	// stop http server for new request
 	err := s.Server.Shutdown(ctx)
 	//wait while all operations will be finished
