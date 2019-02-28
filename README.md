@@ -219,3 +219,22 @@ Good response example:
   }
 }
 ```
+
+## Examples
+
+You can see example of http request in `./examples/http`.
+
+## NATS.io
+
+Supported async result for `Run` and `UpdateSource`.
+
+### Example
+
+1. `dc up`
+2. `telnet localhost 4222` and insert `SUB Prefix.RunResult.* id1`
+3. Send http request for run, for example `./examples/http/Run.http`
+4. ...
+5. PROFIT!!!!1111
+
+
+

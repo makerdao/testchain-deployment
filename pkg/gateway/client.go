@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/makerdao/testchain-deployment/pkg/service/nats"
 	"github.com/makerdao/testchain-deployment/pkg/service/protocol"
+	gonats "github.com/nats-io/go-nats"
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,13 +23,17 @@ const (
 type Client struct {
 	basePath string
 	client   *http.Client
+	nats     *gonats.Conn
+	natsCfg  nats.Config
 }
 
 // NewClient init client
-func NewClient(cfg Config) *Client {
+func NewClient(cfg Config, nats *gonats.Conn, natsCfg nats.Config) *Client {
 	return &Client{
 		basePath: fmt.Sprintf("http://%s:%d", cfg.Host, cfg.Port),
 		client:   &http.Client{Timeout: time.Duration(cfg.ClientTimeoutInSecond) * time.Second},
+		nats:     nats,
+		natsCfg:  natsCfg,
 	}
 }
 
@@ -87,8 +93,11 @@ func (c *Client) RunResult(log *logrus.Entry, req *RunResultRequest) error {
 		return err
 	}
 
-	if _, err := c.req(log, "RunResult", reqBytes); err != nil {
-		return err
+	_, httpErr := c.req(log, "RunResult", reqBytes)
+
+	natsErr := c.nats.Publish(c.getPublishTopic("RunResult", req.ID), reqBytes)
+	if natsErr != nil || httpErr != nil {
+		return fmt.Errorf("http: %+v, nats: %+v", httpErr, natsErr)
 	}
 
 	return nil
@@ -122,8 +131,11 @@ func (c *Client) UpdateResult(log *logrus.Entry, req *UpdateResultRequest) error
 		return err
 	}
 
-	if _, err := c.req(log, "UpdateResult", reqBytes); err != nil {
-		return err
+	_, httpErr := c.req(log, "UpdateResult", reqBytes)
+
+	natsErr := c.nats.Publish(c.getPublishTopic("UpdateResult", req.ID), reqBytes)
+	if natsErr != nil || httpErr != nil {
+		return fmt.Errorf("http: %+v, nats: %+v", httpErr, natsErr)
 	}
 
 	return nil
@@ -190,4 +202,8 @@ func (c *Client) req(log *logrus.Entry, method string, reqBytes json.RawMessage)
 	}
 
 	return respBody.Result, nil
+}
+
+func (c *Client) getPublishTopic(name string, id string) string {
+	return fmt.Sprintf("%s.%s.%s", c.natsCfg.TopicPrefix, name, id)
 }

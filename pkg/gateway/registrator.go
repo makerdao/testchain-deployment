@@ -52,6 +52,8 @@ func (r *Registrator) Run(log *logrus.Entry) error {
 
 //Shutdown unregister from gateway
 func (r *Registrator) Shutdown(ctx context.Context, log *logrus.Entry) error {
+	log.Debug("Start graceful shutdown registrator")
+	defer log.Debug("Graceful shutdown registrator: done")
 	if !r.registered {
 		log.Info("Deployment was not registered")
 		return nil

@@ -1,0 +1,27 @@
+version: "3"
+services:
+  nats:
+    image: nats:1.4.1
+    container_name: nats.local
+    ports:
+      - 4222:4222
+      - 6222:6222
+      - 8222:8222
+    networks:
+      - net1
+  testchain-deployment:
+    depends_on:
+      - nats
+    image: makerdao/testchain-deployment:latest
+    container_name: testchain-deployment.local
+    ports:
+      - 5001:5001
+    environment:
+      TCD_GATEWAY: host=testchain-backendgateway.local
+    volumes:
+      - ~/.ssh:/root/.ssh
+    networks:
+      - net1
+networks:
+  net1:
+    driver: bridge

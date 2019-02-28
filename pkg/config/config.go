@@ -1,19 +1,24 @@
 package config
 
 import (
+	"errors"
+
 	"github.com/kelseyhightower/envconfig"
 	"github.com/makerdao/testchain-deployment/pkg/deploy"
 	"github.com/makerdao/testchain-deployment/pkg/gateway"
 	"github.com/makerdao/testchain-deployment/pkg/github"
+	"github.com/makerdao/testchain-deployment/pkg/service/nats"
 )
 
 // Config is an application config
 type Config struct {
+	Server   string         `split_word:"true"`
 	Host     string         `split_word:"true"`
 	Port     int            `split_word:"true"`
 	Deploy   deploy.Config  `split_word:"true"`
 	Gateway  gateway.Config `split_word:"true"`
 	Github   github.Config  `split_word:"true"`
+	NATS     nats.Config    `split_word:"true"`
 	LogLevel string         `split_word:"true"`
 }
 
@@ -24,11 +29,13 @@ const EnvPrefix = "TCD"
 func New() *Config {
 	// set default values
 	cfg := &Config{
+		Server:   "HTTP",
 		Host:     "testchain-deployment",
 		Port:     5001,
 		Deploy:   deploy.GetDefaultConfig(),
 		Gateway:  gateway.GetDefaultConfig(),
 		Github:   github.GetDefaultConfig(),
+		NATS:     nats.GetDefaultConfig(),
 		LogLevel: "debug",
 	}
 
@@ -43,6 +50,9 @@ func (c *Config) LoadFromEnv() error {
 // Validate cfg and all inclusion
 // Return first error
 func (c *Config) Validate() error {
+	if c.Server != "NATS" && c.Server != "HTTP" {
+		return errors.New("you should use 'HTTP' or 'NATS' server")
+	}
 	if err := c.Github.Validate(); err != nil {
 		return err
 	}

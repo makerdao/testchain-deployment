@@ -1,0 +1,21 @@
+POST http://localhost:5001/rpc
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "id": "reqID",
+  "method": "Run",
+  "data": {
+    "envVars": {
+      "ETH_FROM": "0xeda42c1e65b01c66f63e53d705ac9dd1d0148d06",
+      "ETH_GAS": "6000000",
+      "ETH_RPC_ACCOUNTS": "yes",
+      "ETH_RPC_URL": "http://ex_testchain:8518",
+      "SETH_STATUS": "yes"
+    },
+    "stepId": 1
+  }
+}
+
+###
