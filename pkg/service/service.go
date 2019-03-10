@@ -86,6 +86,12 @@ func natsServConfigure(log *logrus.Entry, cfg nats.Config, methodsComponent *met
 	if err := n.AddSyncMethod("GetResult", methodsComponent.GetResult); err != nil {
 		return nil, err
 	}
+	if err := n.AddAsyncMethod("Run", methodsComponent.Run); err != nil {
+		return nil, err
+	}
+	if err := n.AddAsyncMethod("UpdateSource", methodsComponent.Update); err != nil {
+		return nil, err
+	}
 	return n, nil
 }
 
