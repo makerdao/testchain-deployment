@@ -18,11 +18,11 @@ import (
 type HandlerMethod func(log *logrus.Entry, ID string, requestBytes []byte) (response []byte, error *serror.Error)
 
 type Server struct {
-	log         *logrus.Entry
-	cfg         *Config
-	conn        *natsio.Conn
-	syncMethods map[string]HandlerMethod
-	//asyncMethods map[string]HandlerMethod
+	log          *logrus.Entry
+	cfg          *Config
+	conn         *natsio.Conn
+	syncMethods  map[string]HandlerMethod
+	asyncMethods map[string]HandlerMethod
 }
 
 func New(log *logrus.Entry, cfg *Config) *Server {
@@ -36,6 +36,15 @@ func New(log *logrus.Entry, cfg *Config) *Server {
 //AddSyncMethod add sync method for name
 func (s *Server) AddSyncMethod(name string, methodFunc HandlerMethod) error {
 	if _, ok := s.syncMethods[name]; ok {
+		return errors.New("method with name already exists")
+	}
+	s.syncMethods[name] = methodFunc
+	return nil
+}
+
+//AddAsyncMethod add async method for name
+func (s *Server) AddAsyncMethod(name string, methodFunc HandlerMethod) error {
+	if _, ok := s.asyncMethods[name]; ok {
 		return errors.New("method with name already exists")
 	}
 	s.syncMethods[name] = methodFunc
@@ -71,37 +80,37 @@ func (s *Server) Run(log *logrus.Entry) error {
 	return nil
 }
 
-//func (s *Server) getAsyncMsgHandler(methodFunc HandlerMethod) natsio.MsgHandler {
-//	return func(msg *natsio.Msg) {
-//		log := s.log
-//		defer func() {
-//			if rec := recover(); rec != nil {
-//				resp := prepareErrRespBytes(
-//					serror.New(serror.ErrCodeBadRequest, fmt.Sprintf("Unexpected internal error, %+v", rec)),
-//				)
-//				if err := s.conn.Publish(msg.Reply, resp); err != nil {
-//					log.WithError(err).
-//						WithField("topic", msg.Reply).
-//						Error("Can't publish response with err to chanel")
-//				}
-//			}
-//		}()
-//		topicParts := strings.Split(msg.Subject, ".")
-//		reqID := topicParts[len(topicParts)-1]
-//		log = log.WithField("topic", msg.Subject)
-//		log.WithField("data", string(msg.Data)).Info("Request")
-//		_, sErr := methodFunc(log, reqID, msg.Data)
-//		if sErr != nil {
-//			errBytes := prepareErrRespBytes(sErr)
-//			log.WithField("data", string(errBytes)).Error("Response error")
-//			if err := s.conn.Publish(msg.Reply, errBytes); err != nil {
-//				log.WithError(err).
-//					WithField("topic", msg.Reply).
-//					Error("Can't publish response with err to chanel")
-//			}
-//		}
-//	}
-//}
+func (s *Server) getAsyncMsgHandler(methodFunc HandlerMethod) natsio.MsgHandler {
+	return func(msg *natsio.Msg) {
+		log := s.log
+		defer func() {
+			if rec := recover(); rec != nil {
+				resp := prepareErrRespBytes(
+					serror.New(serror.ErrCodeBadRequest, fmt.Sprintf("Unexpected internal error, %+v", rec)),
+				)
+				if err := s.conn.Publish(msg.Reply, resp); err != nil {
+					log.WithError(err).
+						WithField("topic", msg.Reply).
+						Error("Can't publish response with err to chanel")
+				}
+			}
+		}()
+		topicParts := strings.Split(msg.Subject, ".")
+		reqID := topicParts[len(topicParts)-1]
+		log = log.WithField("topic", msg.Subject)
+		log.WithField("data", string(msg.Data)).Info("Request")
+		_, sErr := methodFunc(log, reqID, msg.Data)
+		if sErr != nil {
+			errBytes := prepareErrRespBytes(sErr)
+			log.WithField("data", string(errBytes)).Error("Response error")
+			if err := s.conn.Publish(msg.Reply, errBytes); err != nil {
+				log.WithError(err).
+					WithField("topic", msg.Reply).
+					Error("Can't publish response with err to chanel")
+			}
+		}
+	}
+}
 
 func (s *Server) getSyncMsgHandler(methodFunc HandlerMethod) natsio.MsgHandler {
 	return func(msg *natsio.Msg) {
