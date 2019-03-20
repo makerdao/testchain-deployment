@@ -47,7 +47,7 @@ func (s *Server) AddAsyncMethod(name string, methodFunc HandlerMethod) error {
 	if _, ok := s.asyncMethods[name]; ok {
 		return errors.New("method with name already exists")
 	}
-	s.syncMethods[name] = methodFunc
+	s.asyncMethods[name] = methodFunc
 	return nil
 }
 
@@ -66,6 +66,21 @@ func (s *Server) Run(log *logrus.Entry) error {
 		log.Infof("Register sync method %s", name)
 		topic := fmt.Sprintf("%s.%s.*", s.cfg.TopicPrefix, name)
 		_, err := s.conn.QueueSubscribe(topic, s.cfg.GroupName, s.getSyncMsgHandler(methodFunc))
+		if err != nil {
+			return err
+		}
+		if err := s.conn.Flush(); err != nil {
+			return err
+		}
+		if err := s.conn.LastError(); err != nil {
+			return err
+		}
+	}
+
+	for name, methodFunc := range s.asyncMethods {
+		log.Infof("Register async method %s", name)
+		topic := fmt.Sprintf("%s.%s.*", s.cfg.TopicPrefix, name)
+		_, err := s.conn.QueueSubscribe(topic, s.cfg.GroupName, s.getAsyncMsgHandler(methodFunc))
 		if err != nil {
 			return err
 		}
