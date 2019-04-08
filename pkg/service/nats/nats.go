@@ -39,6 +39,7 @@ func (s *Server) AddSyncMethod(name string, methodFunc HandlerMethod) error {
 		return errors.New("method with name already exists")
 	}
 	s.syncMethods[name] = methodFunc
+	s.log.Infof("NATS sync method added: %s", name)
 	return nil
 }
 
@@ -48,6 +49,7 @@ func (s *Server) AddAsyncMethod(name string, methodFunc HandlerMethod) error {
 		return errors.New("method with name already exists")
 	}
 	s.asyncMethods[name] = methodFunc
+	s.log.Infof("NATS async method added: %s", name)
 	return nil
 }
 

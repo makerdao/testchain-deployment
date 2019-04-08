@@ -68,6 +68,65 @@ func (c *Component) MkDeploymentDirIfNotExists(log *logrus.Entry) error {
 	return os.MkdirAll(c.cfg.DeploymentDirPath, 0755)
 }
 
+//Checkout to commit
+func (c *Component) Checkout(log *logrus.Entry, commit string) error {
+	if err := c.storage.SetUpdate(true); err != nil {
+		return err
+	}
+	defer func() {
+		if err := c.storage.SetUpdate(false); err != nil {
+			log.WithError(err).Error("Can't reset update status")
+		}
+	}()
+
+	if cmdErr := c.githubClient.CheckoutCmd(log, &commit); cmdErr != nil {
+		log.WithError(cmdErr).Error("Can't checkout to commit")
+		return cmdErr
+	}
+	if cmdErr := c.dappClient.UpdateCmd(c.githubClient.GetLoadingPath()); cmdErr != nil {
+		log.WithError(cmdErr).Error("Can't dapp update")
+		return cmdErr
+	}
+
+	// if we have error while downloading repo, we can work with prev version of repo
+	if err := c.githubClient.CleanRepoIfExists(log); err != nil {
+		log.WithError(err).Error("Can't clean deployment dir")
+		return err
+	}
+	cmdErr := command.New(
+		exec.Command("cp", "-r", c.githubClient.GetLoadingPath(), c.githubClient.GetRepoPath()),
+	).Run()
+	if cmdErr != nil {
+		return cmdErr
+	}
+
+	tagHash, cmdErr := c.githubClient.LastHashCommitCmd(log)
+	if cmdErr != nil {
+		return cmdErr
+	}
+
+	stepList, err := c.getStepList(log)
+	if err != nil {
+		return err
+	}
+
+	if err := c.storage.UpsertStepList(log, stepList); err != nil {
+		return err
+	}
+
+	if err := c.storage.SetTagHash(log, tagHash); err != nil {
+		return err
+	}
+
+	if err := c.storage.SetUpdatedAtNow(); err != nil {
+		return err
+	}
+
+	log.Debugf("Loaded data: \n %+v \n\n %+v", tagHash, stepList)
+
+	return nil
+}
+
 //UpdateSource from github and prepare for work with it
 func (c *Component) UpdateSource(log *logrus.Entry) error {
 	if err := c.storage.SetUpdate(true); err != nil {
@@ -185,6 +244,17 @@ func (c *Component) ReadResult() (*ResultModel, *ResultErrorModel) {
 		return nil, NewResultErrorModelFromErr(err)
 	}
 	return NewResultModel(fi.ModTime(), data), nil
+}
+
+func (c *Component) GetCommitList(log *logrus.Entry) ([]github.Commit, *ResultErrorModel) {
+	res, cmdErr, err := c.githubClient.GetCommitList(log)
+	if err != nil {
+		return nil, NewResultErrorModelFromErr(err)
+	}
+	if cmdErr != nil {
+		return nil, NewResultErrorModelFromCmd(cmdErr)
+	}
+	return res, nil
 }
 
 func (c *Component) getStepList(log *logrus.Entry) ([]StepModel, error) {

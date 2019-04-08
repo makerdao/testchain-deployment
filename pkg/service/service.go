@@ -86,10 +86,16 @@ func natsServConfigure(log *logrus.Entry, cfg nats.Config, methodsComponent *met
 	if err := n.AddSyncMethod("GetResult", methodsComponent.GetResult); err != nil {
 		return nil, err
 	}
+	if err := n.AddSyncMethod("GetCommitList", methodsComponent.GetCommitList); err != nil {
+		return nil, err
+	}
 	if err := n.AddAsyncMethod("Run", methodsComponent.Run); err != nil {
 		return nil, err
 	}
 	if err := n.AddAsyncMethod("UpdateSource", methodsComponent.Update); err != nil {
+		return nil, err
+	}
+	if err := n.AddAsyncMethod("Checkout", methodsComponent.Checkout); err != nil {
 		return nil, err
 	}
 	return n, nil
@@ -113,6 +119,12 @@ func httpServConfigure(
 		return nil, err
 	}
 	if err := handler.AddMethod("GetResult", methodsComponent.GetResult); err != nil {
+		return nil, err
+	}
+	if err := handler.AddMethod("GetCommitList", methodsComponent.GetCommitList); err != nil {
+		return nil, err
+	}
+	if err := handler.AddMethod("Checkout", methodsComponent.Checkout); err != nil {
 		return nil, err
 	}
 	// init and run http server

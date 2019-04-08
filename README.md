@@ -30,13 +30,17 @@ Default config is ready for local docker
 
 For using custom config var u must use ENV variables.
 
+`GITHUB_DEFAULT_CHECKOUT_TARGET` - u can set default target for github chekout
+(default: 'tags/qa-deploy')
+
 ## API
 
 Protocol based on json object in http body.
 Supply only `POST` requests.
 
 Use id for operation, if u run long time operation, u get response ok on request ASAP 
-and after async running service will send to gateway result of operation. 
+and after async running service will send to gateway result of operation.
+ 
 
 ### Models
 
@@ -216,6 +220,63 @@ Good response example:
       "MCD_MOVE_REP": "0xa59a7c4b2ce773242e89b673db6ce15f694fd6b6",
       "MCD_FLIP_REP": "0x86759f871e3e74d46e320d97a2554106e6191c51"
     }
+  }
+}
+```
+
+#### Checkout
+
+Request:
+```json
+{
+  "id": "reqID",
+  "method": "Checkout",
+  "data": {
+    "commit": "hash_commit"
+  }
+}
+```
+
+Good response example:
+```json
+{
+  "type": "ok",
+  "result": {}
+}
+```
+
+_*When update is finished, system will send result to gateway_
+
+#### Checkout
+
+Request:
+```json
+{
+  "id": "reqID",
+  "method": "GetCommitList",
+  "data": {}
+}
+```
+
+Good response example:
+```json
+{
+  "type": "ok",
+  "result": {
+    "data": [
+      {
+        "commit" : "hash_commit",
+        "author" : "name <email>",
+        "date" : "readable date",
+        "text" : "text of commit"
+      },
+      {
+        "commit" : "hash_commit",
+        "author" : "name <email>",
+        "date" : "readable date",
+        "text" : "text of commit"
+      }
+    ]
   }
 }
 ```

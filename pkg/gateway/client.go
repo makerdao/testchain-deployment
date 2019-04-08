@@ -141,6 +141,44 @@ func (c *Client) UpdateResult(log *logrus.Entry, req *UpdateResultRequest) error
 	return nil
 }
 
+// CheckoutResult -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+type CheckoutResultRequestType string
+
+const (
+	CheckoutResultRequestTypeOK  = "ok"
+	CheckoutResultRequestTypeErr = "error"
+)
+
+type CheckoutResultRequest struct {
+	ID     string               `json:"id"`
+	Type   RunResultRequestType `json:"type"`
+	Result json.RawMessage      `json:"result"`
+}
+
+func (r *CheckoutResultRequest) SetErr(err error) *CheckoutResultRequest {
+	r.Type = RunResultRequestTypeErr
+	r.Result = json.RawMessage(fmt.Sprintf(`{"message":"%s"}`, err.Error()))
+	return r
+}
+
+// CheckoutResult send result of checkout to commit
+func (c *Client) CheckoutResult(log *logrus.Entry, req *CheckoutResultRequest) error {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	_, httpErr := c.req(log, "CheckoutResult", reqBytes)
+
+	natsErr := c.nats.Publish(c.getPublishTopic("CheckoutResult", req.ID), reqBytes)
+	if natsErr != nil || httpErr != nil {
+		return fmt.Errorf("http: %+v, nats: %+v", httpErr, natsErr)
+	}
+
+	return nil
+}
+
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 func (c *Client) reqRegisterUnregister(log *logrus.Entry, method string, req *ServiceData) error {
