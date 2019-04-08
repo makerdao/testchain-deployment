@@ -5,10 +5,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
-	"github.com/makerdao/testchain-deployment/pkg/command"
 	"github.com/sirupsen/logrus"
+
+	"github.com/makerdao/testchain-deployment/pkg/command"
 )
 
 const (
@@ -17,8 +19,9 @@ const (
 
 //Client of github.com
 type Client struct {
-	cfg     Config
-	baseDir string
+	cfg              Config
+	baseDir          string
+	commitListRegexp *regexp.Regexp
 }
 
 //NewClient init client
@@ -105,4 +108,55 @@ func (c *Client) LastHashCommitCmd(log *logrus.Entry) (string, *command.Error) {
 		return "", err
 	}
 	return strings.TrimSuffix(cmd.Stdout.String(), "\n"), nil
+}
+
+type Commit struct {
+	Commit string `json:"commit"`
+	Author string `json:"author"`
+	Date   string `json:"date"`
+	Text   string `json:"text"`
+}
+
+const parseCommitRegexp = `\s*commit\s([a-z0-9]+)\sAuthor:\s(.*)\sDate:\s+(.*)\s+(.*)\s+`
+
+func (c *Client) GetCommitList(log *logrus.Entry) ([]Commit, *command.Error, error) {
+	if c.commitListRegexp == nil {
+		var err error
+		c.commitListRegexp, err = regexp.Compile(parseCommitRegexp)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	cmd := command.New(
+		exec.Command("git", "log"),
+	)
+	if err := cmd.WithDir(c.GetRepoPath()).Run(); err != nil {
+		return nil, err, nil
+	}
+
+	commitList := make([]Commit, 0)
+	findRes := c.commitListRegexp.FindAllStringSubmatch(cmd.Stdout.String(), -1)
+	i := 0
+	for _, vs := range findRes {
+		commit := Commit{}
+		for _, v := range vs {
+			i++
+			switch i % 5 {
+			case 1:
+				break
+			case 2:
+				commit.Commit = v
+			case 3:
+				commit.Author = v
+			case 4:
+				commit.Date = v
+			case 0:
+				commit.Text = v
+
+			}
+		}
+		commitList = append(commitList, commit)
+	}
+	return commitList, nil, nil
 }

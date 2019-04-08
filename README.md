@@ -220,6 +220,63 @@ Good response example:
 }
 ```
 
+#### Checkout
+
+Request:
+```json
+{
+  "id": "reqID",
+  "method": "Checkout",
+  "data": {
+    "commit": "hash_commit"
+  }
+}
+```
+
+Good response example:
+```json
+{
+  "type": "ok",
+  "result": {}
+}
+```
+
+_*When update is finished, system will send result to gateway_
+
+#### Checkout
+
+Request:
+```json
+{
+  "id": "reqID",
+  "method": "GetCommitList",
+  "data": {}
+}
+```
+
+Good response example:
+```json
+{
+  "type": "ok",
+  "result": {
+    "data": [
+      {
+        "commit" : "hash_commit",
+        "author" : "name <email>",
+        "date" : "readable date",
+        "text" : "text of commit"
+      },
+      {
+        "commit" : "hash_commit",
+        "author" : "name <email>",
+        "date" : "readable date",
+        "text" : "text of commit"
+      }
+    ]
+  }
+}
+```
+
 ## Examples
 
 You can see example of http request in `./examples/http`.

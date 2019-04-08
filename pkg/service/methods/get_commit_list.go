@@ -1,11 +1,17 @@
 package methods
 
 import (
+	"encoding/json"
+
 	"github.com/sirupsen/logrus"
 
-	"github.com/makerdao/testchain-deployment/pkg/gateway"
+	"github.com/makerdao/testchain-deployment/pkg/github"
 	"github.com/makerdao/testchain-deployment/pkg/serror"
 )
+
+type GetCommitListResponse struct {
+	Data []github.Commit `json:"data"`
+}
 
 //GetCommitList source if it possible
 func (m *Methods) GetCommitList(
@@ -13,27 +19,21 @@ func (m *Methods) GetCommitList(
 	id string,
 	requestBytes []byte,
 ) (response []byte, error *serror.Error) {
-	if m.c {
+	if m.storage.GetUpdate() {
 		return nil, serror.New(serror.ErrCodeInternalError, "Deploy script updating in progress")
 	}
 	if m.storage.GetRun() {
 		return nil, serror.New(serror.ErrCodeInternalError, "Deploy script running in progress")
 	}
-	go func(id string) {
-		resultReq := &gateway.UpdateResultRequest{
-			ID: id,
-		}
-		if err := m.deployComponent.UpdateSource(log); err != nil {
-			if err := m.gatewayClient.UpdateResult(log, resultReq.SetErr(err)); err != nil {
-				log.WithError(err).Error("Can't send request with result of run to gateway with error")
-			}
-			return
-		}
-		resultReq.Type = gateway.UpdateResultRequestTypeOK
-		if err := m.gatewayClient.UpdateResult(log, resultReq); err != nil {
-			log.WithError(err).Error("Can't send request with result of run to gateway")
-		}
-	}(id)
+	res, dErr := m.deployComponent.GetCommitList(log)
+	if dErr != nil {
+		return nil, serror.New(serror.ErrCodeInternalError, "Can't get list of commits")
+	}
 
-	return []byte(`{}`), nil
+	respBytes, err := json.Marshal(GetCommitListResponse{Data: res})
+	if err != nil {
+		return nil, serror.NewMarshalRespErr(err)
+	}
+
+	return respBytes, nil
 }
