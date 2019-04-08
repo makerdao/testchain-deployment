@@ -90,7 +90,7 @@ func (c *Client) UpdateSubmodulesCmd(log *logrus.Entry) *command.Error {
 func (c *Client) CheckoutCmd(log *logrus.Entry, id *string) *command.Error {
 	if id == nil {
 		id = new(string)
-		*id = "tags/" + c.cfg.TagName
+		*id = c.cfg.DefaultCheckoutTarget
 	}
 	return command.New(
 		exec.Command("git", "checkout", *id),
