@@ -30,13 +30,17 @@ Default config is ready for local docker
 
 For using custom config var u must use ENV variables.
 
+`GITHUB_DEFAULT_CHECKOUT_TARGET` - u can set default target for github chekout
+(default: 'tags/qa-deploy')
+
 ## API
 
 Protocol based on json object in http body.
 Supply only `POST` requests.
 
 Use id for operation, if u run long time operation, u get response ok on request ASAP 
-and after async running service will send to gateway result of operation. 
+and after async running service will send to gateway result of operation.
+ 
 
 ### Models
 
