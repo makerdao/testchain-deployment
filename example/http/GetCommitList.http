@@ -1,0 +1,12 @@
+POST http://localhost:5001/rpc
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "id": "reqIDGetCommitList",
+  "method": "GetCommitList",
+  "data": {}
+}
+
+###

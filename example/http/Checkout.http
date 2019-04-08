@@ -1,0 +1,14 @@
+POST http://localhost:5001/rpc
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "id": "reqIDGetCommitList",
+  "method": "Checkout",
+  "data": {
+    "commit": "809bc8a98b409f062da015962778596d534a84c1"
+  }
+}
+
+###

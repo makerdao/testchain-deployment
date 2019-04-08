@@ -35,6 +35,7 @@ func (h *Handler) AddMethod(name string, methodFunc HandlerMethod) error {
 		return errors.New("method with name already exists")
 	}
 	h.methods[name] = methodFunc
+	h.log.Infof("HTTP method added: %s", name)
 	return nil
 }
 
