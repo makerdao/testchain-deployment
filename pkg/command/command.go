@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 //Command is wrapper under exec.Cmd
@@ -43,7 +44,7 @@ func (c *Command) Run() *Error {
 	c.Cmd.Stdout = c.Stdout
 	c.Cmd.Stderr = bytesBuf
 	if err := c.Cmd.Run(); err != nil {
-		return NewError(err, bytesBuf.Bytes())
+		return NewError(err, []byte(strings.Replace(bytesBuf.String(), "\n", "", -1)))
 	}
 	return nil
 }
