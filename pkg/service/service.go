@@ -38,13 +38,10 @@ func Run(log *logrus.Entry, cfg *config.Config) error {
 	inMemStorage := storage.NewInMemory()
 	deployComponent := deploy.New(cfg.Deploy, githubClient, inMemStorage)
 	methodsComponent := methods.NewMethods(inMemStorage, deployComponent, gatewayClient)
-	// first load source
-	log.Info("First update src started, it takes a few minutes")
-	if err := deployComponent.UpdateSource(log); err != nil {
-		log.WithError(err).Error("Can't first update source")
+
+	if err := deployComponent.FirstUpdate(log); err != nil {
 		return err
 	}
-	log.Info("First update src finished")
 
 	log.Infof("Used %s server", cfg.Server)
 	var serv system.RunnerShutdowner

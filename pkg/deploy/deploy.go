@@ -2,7 +2,9 @@ package deploy
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -10,10 +12,11 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/makerdao/testchain-deployment/pkg/command"
 	"github.com/makerdao/testchain-deployment/pkg/dapp"
 	"github.com/makerdao/testchain-deployment/pkg/github"
-	"github.com/sirupsen/logrus"
 )
 
 // StorageInterface for deploy action
@@ -127,6 +130,86 @@ func (c *Component) Checkout(log *logrus.Entry, commit string) error {
 	return nil
 }
 
+func (c *Component) FirstUpdate(log *logrus.Entry) error {
+	log.Info(c.cfg.RunUpdateOnStart)
+	switch c.cfg.RunUpdateOnStart {
+	case "disable":
+		return c.CollectInfo(log)
+	case "enable":
+		// first load source
+		log.Info("First update src started, it takes a few minutes")
+		if err := c.UpdateSource(log); err != nil {
+			log.WithError(err).Error("Can't first update source")
+			return err
+		}
+		log.Info("First update src finished")
+		return nil
+	case "ifNotExists":
+		empty, err := isDirEmpty(c.cfg.DeploymentDirPath)
+		if err != nil {
+			return err
+		}
+		log.Infof("Deployment dir exists: %+v", empty)
+		if !empty {
+			return c.CollectInfo(log)
+		}
+		// first load source
+		log.Info("First update src started, it takes a few minutes")
+		if err := c.UpdateSource(log); err != nil {
+			log.WithError(err).Error("Can't first update source")
+			return err
+		}
+		log.Info("First update src finished")
+		return nil
+	default:
+		return errors.New("unknown strategy for update on start")
+	}
+}
+
+func isDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	// read in ONLY one file
+	_, err = f.Readdir(1)
+
+	// and if the file is EOF... well, the dir is empty.
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
+}
+
+func (c *Component) CollectInfo(log *logrus.Entry) error {
+	tagHash, cmdErr := c.githubClient.LastHashCommitCmd(log)
+	if cmdErr != nil {
+		return cmdErr
+	}
+
+	stepList, err := c.getStepList(log)
+	if err != nil {
+		return err
+	}
+
+	if err := c.storage.UpsertStepList(log, stepList); err != nil {
+		return err
+	}
+
+	if err := c.storage.SetTagHash(log, tagHash); err != nil {
+		return err
+	}
+
+	if err := c.storage.SetUpdatedAtNow(); err != nil {
+		return err
+	}
+	log.Debugf("Loaded data: \n %+v \n\n %+v", tagHash, stepList)
+
+	return nil
+}
+
 //UpdateSource from github and prepare for work with it
 func (c *Component) UpdateSource(log *logrus.Entry) error {
 	if err := c.storage.SetUpdate(true); err != nil {
@@ -175,31 +258,7 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 		return cmdErr
 	}
 
-	tagHash, cmdErr := c.githubClient.LastHashCommitCmd(log)
-	if cmdErr != nil {
-		return cmdErr
-	}
-
-	stepList, err := c.getStepList(log)
-	if err != nil {
-		return err
-	}
-
-	if err := c.storage.UpsertStepList(log, stepList); err != nil {
-		return err
-	}
-
-	if err := c.storage.SetTagHash(log, tagHash); err != nil {
-		return err
-	}
-
-	if err := c.storage.SetUpdatedAtNow(); err != nil {
-		return err
-	}
-
-	log.Debugf("Loaded data: \n %+v \n\n %+v", tagHash, stepList)
-
-	return nil
+	return c.CollectInfo(log)
 }
 
 // RunStep run step command
