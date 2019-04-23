@@ -18,8 +18,10 @@ services:
       - 5001:5001
     environment:
       TCD_GATEWAY: host=testchain-backendgateway.local
+#      TCD_DEPLOY: runUpdateOnStart=disable
     volumes:
       - ~/.ssh:/root/.ssh
+      - ./deployment:/deployment
     networks:
       - net1
 networks:

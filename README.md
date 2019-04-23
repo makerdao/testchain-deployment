@@ -33,6 +33,9 @@ For using custom config var u must use ENV variables.
 `GITHUB_DEFAULT_CHECKOUT_TARGET` - u can set default target for github chekout
 (default: 'tags/qa-deploy')
 
+`TCD_DEPLOY=runUpdateOnStart=disable` - u can disable update scripts on start if set `disable`,
+ also u can use `ifNotExists` or `enable`(default: ifNotExists)
+
 ## API
 
 Protocol based on json object in http body.

@@ -10,6 +10,7 @@ type Config struct {
 	DeploymentDirPath string
 	DeploymentSubPath string
 	ResultSubPath     string
+	RunUpdateOnStart  string
 }
 
 // Decode for envconfig
@@ -30,6 +31,8 @@ func (c *Config) Decode(data string) error {
 			c.DeploymentSubPath = paramArr[1]
 		case "resultSubPath":
 			c.ResultSubPath = paramArr[1]
+		case "runUpdateOnStart":
+			c.RunUpdateOnStart = paramArr[1]
 		default:
 			return fmt.Errorf("unknown param '%s' for part of Deploy env", paramArr[0])
 		}
@@ -44,5 +47,6 @@ func GetDefaultConfig() Config {
 		DeploymentDirPath: "/deployment",
 		DeploymentSubPath: "./",
 		ResultSubPath:     "out/addresses.json",
+		RunUpdateOnStart:  "ifNotExists",
 	}
 }

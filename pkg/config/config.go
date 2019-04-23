@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/kelseyhightower/envconfig"
+
 	"github.com/makerdao/testchain-deployment/pkg/deploy"
 	"github.com/makerdao/testchain-deployment/pkg/gateway"
 	"github.com/makerdao/testchain-deployment/pkg/github"
