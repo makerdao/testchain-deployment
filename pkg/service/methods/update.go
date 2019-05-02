@@ -20,7 +20,7 @@ func (m *Methods) Update(
 	}
 
 	log.Debugf("Update source process started with request Id %s", id)
-	
+
 	go func(id string) {
 		resultReq := &gateway.UpdateResultRequest{
 			ID: id,
