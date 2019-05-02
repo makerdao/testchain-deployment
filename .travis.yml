@@ -1,0 +1,33 @@
+language: go
+dist: xenial
+services: docker
+branches: # build all
+  only:
+  - gh-pages
+  - /.*/
+# before_install:
+#   - sudo add-apt-repository -y ppa:ethereum/ethereum
+#   - sudo apt-get update -q
+#   - sudo apt-get install -y ethereum
+# before_script:
+#   - npm install -g ganache-cli
+
+# env:
+#   global:
+#     - GANACHE_EXECUTABLE=ganache-cli
+
+go:
+  - '1.11.x'
+
+script:
+  - make lint
+  - make test
+
+after_success:
+  - |
+    if [ "$TRAVIS_BRANCH" == "master" ]; then
+      echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      make build-base-image;
+      make build-image TAG=dev;
+      make docker-push TAG=dev;
+    fi

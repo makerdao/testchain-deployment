@@ -39,6 +39,12 @@ lint:
 		-w /go/src/${PROJECT} golangci/golangci-lint:v1.12 golangci-lint run --enable-all --skip-dirs vendor,version,pkg/gen ./...
 .PHONY: lint
 
+docker-push:
+	@echo "Pushing docker images"
+	@docker push ${REGISTRY}${SRV}-base:latest
+	@docker push ${REGISTRY}${SRV}:${TAG}
+.PHONY: docker-push
+
 build-image: build
 	@echo "+ $@"
 	@docker build \
