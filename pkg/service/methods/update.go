@@ -18,6 +18,9 @@ func (m *Methods) Update(
 	if m.storage.GetRun() {
 		return nil, serror.New(serror.ErrCodeInternalError, "Deploy script running in progress")
 	}
+
+	log.Debugf("Update source process started with request Id %s", id)
+	
 	go func(id string) {
 		resultReq := &gateway.UpdateResultRequest{
 			ID: id,
