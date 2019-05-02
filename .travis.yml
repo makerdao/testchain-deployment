@@ -20,6 +20,7 @@ go:
   - '1.11.x'
 
 script:
+  - make vendor
   - make lint
   - make test
 
