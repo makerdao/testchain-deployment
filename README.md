@@ -1,5 +1,7 @@
 # testchain-deployment
 
+[![Build Status](https://travis-ci.org/makerdao/testchain-deployment.svg?branch=master)](https://travis-ci.org/makerdao/testchain-deployment)
+
 ## Requirements
 
 * go > 1.11
