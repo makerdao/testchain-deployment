@@ -145,6 +145,10 @@ func (c *Component) FirstUpdate(log *logrus.Entry) error {
 		log.Info("First update src finished")
 		return nil
 	case "ifNotExists":
+		if err := c.MkDeploymentDirIfNotExists(log); err != nil {
+			log.WithError(err).Error("Can't create dir for deployment")
+			return err
+		}
 		empty, err := isDirEmpty(c.cfg.DeploymentDirPath)
 		if err != nil {
 			return err
