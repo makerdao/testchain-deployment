@@ -15,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/makerdao/testchain-deployment/pkg/command"
-	"github.com/makerdao/testchain-deployment/pkg/dapp"
 	"github.com/makerdao/testchain-deployment/pkg/github"
 )
 
@@ -37,7 +36,6 @@ type StorageInterface interface {
 type Component struct {
 	cfg            Config
 	githubClient   *github.Client
-	dappClient     *dapp.Client
 	stepNameRegexp *regexp.Regexp
 	storage        StorageInterface
 }
@@ -84,10 +82,6 @@ func (c *Component) Checkout(log *logrus.Entry, commit string) error {
 
 	if cmdErr := c.githubClient.CheckoutCmd(log, &commit); cmdErr != nil {
 		log.WithError(cmdErr).Error("Can't checkout to commit")
-		return cmdErr
-	}
-	if cmdErr := c.dappClient.UpdateCmd(c.githubClient.GetLoadingPath()); cmdErr != nil {
-		log.WithError(cmdErr).Error("Can't dapp update")
 		return cmdErr
 	}
 
@@ -237,16 +231,8 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 		log.WithError(cmdErr).Error("Can't clone deployment")
 		return cmdErr
 	}
-	if cmdErr := c.githubClient.UpdateSubmodulesCmd(log); cmdErr != nil {
-		log.WithError(cmdErr).Error("Can't update submodules deployment")
-		return cmdErr
-	}
 	if cmdErr := c.githubClient.CheckoutCmd(log, nil); cmdErr != nil {
 		log.WithError(cmdErr).Error("Can't checkout to tag")
-		return cmdErr
-	}
-	if cmdErr := c.dappClient.UpdateCmd(c.githubClient.GetLoadingPath()); cmdErr != nil {
-		log.WithError(cmdErr).Error("Can't dapp update")
 		return cmdErr
 	}
 
@@ -284,7 +270,9 @@ func (c *Component) RunStep(log *logrus.Entry, stepID int, envVars map[string]st
 	if !hasStep {
 		return NewResultErrorModelFromTxt("unknown id of step")
 	}
-	cmd := command.New(exec.Command(fmt.Sprintf("./step-%d-deploy", stepID))).
+	cmd := command.New(exec.Command("nix", "run",
+			"-f", ".", // Use Nix expression from current working directory for now
+			"-c", fmt.Sprintf("step-%d-deploy", stepID))).
 		WithDir(c.githubClient.GetRepoPath()).
 		WithEnvVarsMap(envVars)
 	if cmdErr := cmd.Run(); cmdErr != nil {
