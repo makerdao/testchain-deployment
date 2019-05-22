@@ -271,8 +271,8 @@ func (c *Component) RunStep(log *logrus.Entry, stepID int, envVars map[string]st
 		return NewResultErrorModelFromTxt("unknown id of step")
 	}
 	cmd := command.New(exec.Command("nix", "run",
-			"-f", ".", // Use Nix expression from current working directory for now
-			"-c", fmt.Sprintf("step-%d-deploy", stepID))).
+		"-f", ".", // Use Nix expression from current working directory for now
+		"-c", fmt.Sprintf("step-%d-deploy", stepID))).
 		WithDir(c.githubClient.GetRepoPath()).
 		WithEnvVarsMap(envVars)
 	if cmdErr := cmd.Run(); cmdErr != nil {
