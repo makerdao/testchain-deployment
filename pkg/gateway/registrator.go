@@ -14,6 +14,7 @@ type Registrator struct {
 	host           string
 	port           int
 	registered     bool
+	stopCh         chan bool
 }
 
 // NewRegistrator init registrator
@@ -23,6 +24,7 @@ func NewRegistrator(cfg Config, client *Client, host string, port int) *Registra
 		tickerDuration: time.Duration(cfg.RegisterPeriodInSec) * time.Second,
 		host:           host,
 		port:           port,
+		stopCh:         make(chan bool, 1),
 	}
 }
 
@@ -32,6 +34,8 @@ func (r *Registrator) Run(log *logrus.Entry) error {
 	//nolint:megacheck
 	for {
 		select {
+		case <-r.stopCh:
+			return nil
 		case <-ticker.C:
 			err := r.client.Register(
 				log.WithField("component", "gateway_client"),
@@ -54,6 +58,7 @@ func (r *Registrator) Run(log *logrus.Entry) error {
 func (r *Registrator) Shutdown(ctx context.Context, log *logrus.Entry) error {
 	log.Debug("Start graceful shutdown registrator")
 	defer log.Debug("Graceful shutdown registrator: done")
+	r.stopCh <- true
 	if !r.registered {
 		log.Info("Deployment was not registered")
 		return nil
