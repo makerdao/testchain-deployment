@@ -111,13 +111,14 @@ func (c *Client) LastHashCommitCmd(log *logrus.Entry) (string, *command.Error) {
 }
 
 type Commit struct {
+	Ref    string `json:"ref"`
 	Commit string `json:"commit"`
 	Author string `json:"author"`
 	Date   string `json:"date"`
 	Text   string `json:"text"`
 }
 
-const parseCommitRegexp = `\s*commit\s([a-z0-9]+)\sAuthor:\s(.*)\sDate:\s+(.*)\s+(.*)\s+`
+const parseCommitRegexp = `(?m)^(.*)\|(.*)\|(.*)\|(.*)\|(.*)$`
 
 func (c *Client) GetCommitList(log *logrus.Entry) ([]Commit, *command.Error, error) {
 	if c.commitListRegexp == nil {
@@ -129,34 +130,43 @@ func (c *Client) GetCommitList(log *logrus.Entry) ([]Commit, *command.Error, err
 	}
 
 	cmd := command.New(
-		exec.Command("git", "log"),
+		exec.Command("git", "log", "--all", "--pretty=format:%D|%H|%an <%ae>|%aI|%s"),
 	)
 	if err := cmd.WithDir(c.GetRepoPath()).Run(); err != nil {
 		return nil, err, nil
 	}
 
-	commitList := make([]Commit, 0)
-	findRes := c.commitListRegexp.FindAllStringSubmatch(cmd.Stdout.String(), -1)
-	i := 0
-	for _, vs := range findRes {
-		commit := Commit{}
-		for _, v := range vs {
-			i++
-			switch i % 5 {
-			case 1:
-				break
-			case 2:
-				commit.Commit = v
-			case 3:
-				commit.Author = v
-			case 4:
-				commit.Date = v
-			case 0:
-				commit.Text = v
-
+	commitRes := c.commitListRegexp.FindAllStringSubmatch(cmd.Stdout.String(), -1)
+	tagList := make([]Commit, 0)
+	branchList := make([]Commit, 0)
+	commitList := make([]Commit, len(commitRes))
+	for i, cr := range commitRes {
+		makeCommit := func(cr []string, ref string) Commit {
+			return Commit{
+				Ref:    ref,
+				Commit: cr[2],
+				Author: cr[3],
+				Date:   cr[4],
+				Text:   cr[5],
 			}
 		}
-		commitList = append(commitList, commit)
+		// Parse refs
+		refRes := strings.Split(cr[1], ", ")
+		for _, ref := range refRes {
+			if strings.HasPrefix(ref, "tag: ") {
+				// If commit has a tag ref add to tag list
+				tagRef := fmt.Sprintf("tags/%s", strings.TrimPrefix(ref, "tag: "))
+				commit := makeCommit(cr, tagRef)
+				tagList = append(tagList, commit)
+			} else if strings.HasPrefix(ref, "origin/") {
+				// If commit has a head ref add to branch list
+				branchRef := strings.TrimPrefix(ref, "origin/")
+				commit := makeCommit(cr, branchRef)
+				branchList = append(branchList, commit)
+			}
+		}
+		// Add to commit list
+		commitList[i] = makeCommit(cr, "")
 	}
-	return commitList, nil, nil
+	return append(tagList, append(branchList, commitList...)...), nil, nil
 }
