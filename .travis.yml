@@ -1,20 +1,15 @@
 language: go
 dist: xenial
 services: docker
+env:
+  global:
+  - secure: iN95E0M9G4AIODLmCkEpop396FRvWKjAOGQOzXa48iwTjV8xFHMmXmwHiDdr7LZe6FI9f6TLWsonPYg2RGo6Ah1EmrHZ+JPuzBSKjG2/RVrrq6Wu+mbd0v9G50hBnqufi89+eJa1T00HwAT3AtKK+IoYqje6OGs2djnTPX8t8XSsTGwxAR4eTM2cxy5DgJCmE8/SmOe9bWFmFuvs1UyveI4JO1T5bueE5+u4sn5RbKa5rXxP8ImjGYzaW+MekD3Ef/0mbqTtPMqgkzg5DXNnKwmTXRzAe4g2L9puVXV094KN09teucV8SrLY1y9IXsw3gVX2kCAPubXJ4wshPHScHuksuB/4qzpNUuFE8SuGgLe1JEstspgZqJz60+bs7ujuEq8eZCj/KcndWvLa/IsBBSpOKHhm/jeORQOW7hZQu/mOAhroukwuiTDSAV78A2J2VZ1HHIsiKLVbGwNICZ1VjNAj7jHPSCOe3t48VoUuzICB4hnPfGN+O70898/vGYoCWVi9sjpxbITqugYWIQcDv1041k5GQf7x7Xh6A9r76l3WGxMYTKcpZgYZgM+pfBbX3RrEzRGZC8/e3P296QjRBKDSS9dE76Afw6kDiFrjbMaTArVZGK+tsTGU+MUY9sHg5UQokn5feYIcgBz/uI1t8h10eCERPsJvVLIua46GpsU=
+  - secure: O933wuI05S0sXyROsTadxiSE1JkYOAQIqfhRpZ3qrjYe4tlnDgZ9t8zYODbpUiycrsJfEaGXWv9f4jdbbFASwmEd7+CUcD6XfA93+QzUpnHNrwo/t9+AnC988mKBtB1P7FxESqB4Ftfi/bai4zxTLrfEFDCByKA/1E8/6Pb/ShnNICaS2KehbKCYEmNW7XGcWarIAaxQjpPPO36pTIxEMZZDfRjup9DayqbRL0xq8TgTBt6cjmHrphDx4JQteKMhIEtTTFApt9f9XNizv2sr18i+tBbGuwf5CvqL7AZixyJiFa9Kt2ob8vbSj9j1aMbQbl8f8Jps6/mmG0yUJ6G/LeBc23qOADuILT+5sdnSXw3IRw1MSWCtzeJc7NPHSKOmmvv8YdjXD8B54D8/gpIUWqONSDaiInooRddw4XsLktCaWesb4QcjgqVpJDoPdukMHgajUrh+IPN8RNcrmxhDdBPu6hdIqR1J2HGpTUI3VVkHeYq4DxbsFvKlorWcxuIvQrcged4Kmx3oB6MpubpWXZOg2GGX0jRTf/zMNL2RaLzb+ZTee306FNaO/eFj5MlHV1lR/gGXBKTcPv8nKT9NkjXWFDZbJvOmcKRXOpFJeOis2nWDBhf7BOxORl7a9AWo42KF1J3sQPx9wJVXacWbF2J7JGaHYx+eimYwHmdp9cE=
+
+
 branches: # build all
   only:
-  - gh-pages
   - /.*/
-# before_install:
-#   - sudo add-apt-repository -y ppa:ethereum/ethereum
-#   - sudo apt-get update -q
-#   - sudo apt-get install -y ethereum
-# before_script:
-#   - npm install -g ganache-cli
-
-# env:
-#   global:
-#     - GANACHE_EXECUTABLE=ganache-cli
 
 go:
   - '1.11.x'
@@ -24,11 +19,19 @@ script:
   - make lint
   - make test
 
-after_success:
-  - |
-    if [ "$TRAVIS_BRANCH" == "master" ]; then
-      echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      make build-base-image;
-      make build-image TAG=dev;
-      make docker-push TAG=dev;
-    fi
+deploy:
+- provider: script
+  script: >-
+    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &&
+    make build-base-image &&
+    make build-image TAG=dev &&
+    make docker-push TAG=dev
+  on:
+    branch: master
+
+notifications:
+  webhooks:
+    urls:
+      - secure: "cgeeKsMc0qxOIupuJSnF22zFBAvhmvzGb6WhFZ+sLo63eaFN+rAguHsHp6AXbNSivDzJOjPG+/AkyLI0UZ5IkjLDnPr85BFnfAt6EQs8Yu7Rxu9NKsblU5rL+ZMbC6XzPhvHHpbrTtiU65tzrSe5potRih/2C0chXw0l/gGjb8FfT07yVjKXGGJHZXzDtl76hmrmfzqabkiUt/qMRmdZQeLXYbDPgmfg5O1Ls+2dqkYKtDmPPsucNs6h5tnYTwqGCfk1FjuB+TqTnQmMOZNAIa+IxYMBbXOypQeg/hYBuPmwynOk6bY4qL7WD4mRemPL3WMwoaO5oPLamOFMSvphd0JOFo/k1yUCHYy/Acpsmg4oVwf5+G3f1ywsSsMNonqGTDiE7SxB0EsQtqxWKCvWmXIH7B8m/P3UsTUY/YSBf2PuXtIQx72bMl5OJOxjvcOA++1o+jYfyhkbSkffYvGho/WhuIFqUdqCuBY0bpqj1TjnZdGZ1nN8i9rJfdWleVypGP+mrz3pFJtvrvsnmJ5jcaguLRdF9vB3NEKzntxTOUZyMzRoHsStxS6Drmw6KwSKEmCw8cBHYMS2fo/0jD0tyYgZpopN2PNgceL65b4EGCd22yjZ2cWGpksThlohzwc6D+IkZrPzM25xxe8O7UEtHbK8dxsfsm5wm/w893gBhaQ="
+    on_failure: always
+    on_success: never
