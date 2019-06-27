@@ -27,7 +27,17 @@ deploy:
     make build-image TAG=dev &&
     make docker-push TAG=dev
   on:
+    branch: develop
+  skip_cleanup: true
+- provider: script
+  script: >-
+    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &&
+    make build-base-image &&
+    make build-image TAG=latest &&
+    make docker-push TAG=latest
+  on:
     branch: master
+  skip_cleanup: true
 
 notifications:
   webhooks:
