@@ -3,7 +3,6 @@ package deploy
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -45,7 +44,7 @@ func New(cfg Config, githubClient *github.Client, storage StorageInterface) *Com
 	return &Component{
 		cfg:            cfg,
 		githubClient:   githubClient,
-		stepNameRegexp: regexp.MustCompile(`^step-(\d+)\.json$`),
+		stepNameRegexp: regexp.MustCompile(`^deploy-testchain\.json$`),
 		storage:        storage,
 	}
 }
@@ -272,7 +271,7 @@ func (c *Component) RunStep(log *logrus.Entry, stepID int, envVars map[string]st
 	}
 	cmd := command.New(exec.Command("nix", "run",
 		"-f", ".", // Use Nix expression from current working directory for now
-		"-c", fmt.Sprintf("step-%d-deploy", stepID))).
+		"-c", "deploy-testnet.sh")).
 		WithDir(c.githubClient.GetRepoPath()).
 		WithEnvVarsMap(envVars)
 	if cmdErr := cmd.Run(); cmdErr != nil {
