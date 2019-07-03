@@ -44,7 +44,7 @@ func New(cfg Config, githubClient *github.Client, storage StorageInterface) *Com
 	return &Component{
 		cfg:            cfg,
 		githubClient:   githubClient,
-		stepNameRegexp: regexp.MustCompile(`^deploy-testchain\.json$`),
+		stepNameRegexp: regexp.MustCompile(`^step-(\d+)\.json$`),
 		storage:        storage,
 	}
 }
@@ -271,7 +271,7 @@ func (c *Component) RunStep(log *logrus.Entry, stepID int, envVars map[string]st
 	}
 	cmd := command.New(exec.Command("nix", "run",
 		"-f", ".", // Use Nix expression from current working directory for now
-		"-c", "deploy-testnet.sh")).
+		"-c", "deploy-testchain.sh")).
 		WithDir(c.githubClient.GetRepoPath()).
 		WithEnvVarsMap(envVars)
 	if cmdErr := cmd.Run(); cmdErr != nil {
@@ -310,35 +310,52 @@ func (c *Component) GetCommitList(log *logrus.Entry) ([]github.Commit, *ResultEr
 func (c *Component) getStepList(log *logrus.Entry) ([]StepModel, error) {
 	stepList := make([]StepModel, 0)
 	dirPath := c.githubClient.GetRepoPath()
-	log.Debugf("Read step list from: %s", dirPath)
-	wErr := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+	deployTestchainFile := filepath.Join(dirPath, "deploy-testchain.json")
+	// To support `step-*.json` and `deploy-testchain.json` config formats we check
+	// here if `deploy-testchain.json` exists and if so use that for steps 1-9
+	// otherwise use the previous method of `step-*.json`.
+	if _, err := os.Stat(deployTestchainFile); err == nil {
+		log.Debugf("Read step 1 from: %s", deployTestchainFile)
+		model, err := readStepDescriptionFile(deployTestchainFile)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if path == dirPath {
+		// Copy config to steps 1 through 9 so that each step is the same
+		for i := 1; i <= 9; i++ {
+			model.ID = i
+			stepList = append(stepList, *model)
+		}
+	} else {
+		log.Debugf("Read step list from: %s", dirPath)
+		wErr := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if path == dirPath {
+				return nil
+			}
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			res := c.stepNameRegexp.FindStringSubmatch(info.Name())
+			if len(res) != 2 {
+				return nil
+			}
+			step, err := strconv.Atoi(res[1])
+			if err != nil {
+				return err
+			}
+			model, err := readStepDescriptionFile(path)
+			if err != nil {
+				return err
+			}
+			model.ID = step
+			stepList = append(stepList, *model)
 			return nil
+		})
+		if wErr != nil {
+			return nil, wErr
 		}
-		if info.IsDir() {
-			return filepath.SkipDir
-		}
-		res := c.stepNameRegexp.FindStringSubmatch(info.Name())
-		if len(res) != 2 {
-			return nil
-		}
-		step, err := strconv.Atoi(res[1])
-		if err != nil {
-			return err
-		}
-		model, err := readStepDescriptionFile(path)
-		if err != nil {
-			return err
-		}
-		model.ID = step
-		stepList = append(stepList, *model)
-		return nil
-	})
-	if wErr != nil {
-		return nil, wErr
 	}
 	return stepList, nil
 }
