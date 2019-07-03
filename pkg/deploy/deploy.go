@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strconv"
 
 	"github.com/sirupsen/logrus"
 
@@ -19,9 +18,10 @@ import (
 
 // StorageInterface for deploy action
 type StorageInterface interface {
-	UpsertStepList(log *logrus.Entry, modelList []StepModel) error
-	GetStepList(log *logrus.Entry) ([]StepModel, error)
-	HasStep(log *logrus.Entry, id int) (bool, error)
+	UpsertManifest(log *logrus.Entry, manifest Manifest) error
+	GetManifest(log *logrus.Entry) (*Manifest, error)
+	GetScenario(log *logrus.Entry, scenarioNr int) (*Scenario, error)
+	HasScenario(log *logrus.Entry, scenarioNr int) (bool, error)
 	SetTagHash(log *logrus.Entry, hash string) error
 	GetTagHash(log *logrus.Entry) (hash string, err error)
 	SetUpdate(run bool) error
@@ -49,9 +49,9 @@ func New(cfg Config, githubClient *github.Client, storage StorageInterface) *Com
 	}
 }
 
-//GetStepList return list of available steps
-func (c *Component) GetStepList(log *logrus.Entry) ([]StepModel, error) {
-	return c.storage.GetStepList(log)
+//GetManifest return deploy manifest with available scenarios
+func (c *Component) GetManifest(log *logrus.Entry) (*Manifest, error) {
+	return c.storage.GetManifest(log)
 }
 
 //GetTagHash return hash commit of tag
@@ -96,31 +96,7 @@ func (c *Component) Checkout(log *logrus.Entry, commit string) error {
 		return cmdErr
 	}
 
-	tagHash, cmdErr := c.githubClient.LastHashCommitCmd(log)
-	if cmdErr != nil {
-		return cmdErr
-	}
-
-	stepList, err := c.getStepList(log)
-	if err != nil {
-		return err
-	}
-
-	if err := c.storage.UpsertStepList(log, stepList); err != nil {
-		return err
-	}
-
-	if err := c.storage.SetTagHash(log, tagHash); err != nil {
-		return err
-	}
-
-	if err := c.storage.SetUpdatedAtNow(); err != nil {
-		return err
-	}
-
-	log.Debugf("Loaded data: \n %+v \n\n %+v", tagHash, stepList)
-
-	return nil
+	return c.CollectInfo(log)
 }
 
 func (c *Component) FirstUpdate(log *logrus.Entry) error {
@@ -186,13 +162,14 @@ func (c *Component) CollectInfo(log *logrus.Entry) error {
 		return cmdErr
 	}
 
-	stepList, err := c.getStepList(log)
-	if err != nil {
-		return err
-	}
-
-	if err := c.storage.UpsertStepList(log, stepList); err != nil {
-		return err
+	manifest, err := c.getManifest(log)
+	if err == nil {
+		if err := c.storage.UpsertManifest(log, *manifest); err != nil {
+			return err
+		}
+		log.Debugf("Loaded manifest:\n\n%+v", manifest)
+	} else {
+		log.Debugf("Couldn't read manifest file: %s", err)
 	}
 
 	if err := c.storage.SetTagHash(log, tagHash); err != nil {
@@ -202,7 +179,7 @@ func (c *Component) CollectInfo(log *logrus.Entry) error {
 	if err := c.storage.SetUpdatedAtNow(); err != nil {
 		return err
 	}
-	log.Debugf("Loaded data: \n %+v \n\n %+v", tagHash, stepList)
+	log.Debugf("Loaded hash: %+v", tagHash)
 
 	return nil
 }
@@ -250,9 +227,9 @@ func (c *Component) UpdateSource(log *logrus.Entry) error {
 	return c.CollectInfo(log)
 }
 
-// RunStep run step command
+// RunScenario run step command
 // TODO run with ctx, and ability for stop
-func (c *Component) RunStep(log *logrus.Entry, stepID int, envVars map[string]string) *ResultErrorModel {
+func (c *Component) RunScenario(log *logrus.Entry, scenarioNr int, envVars map[string]string) *ResultErrorModel {
 	if err := c.storage.SetRun(true); err != nil {
 		return NewResultErrorModelFromErr(err)
 	}
@@ -262,16 +239,13 @@ func (c *Component) RunStep(log *logrus.Entry, stepID int, envVars map[string]st
 		}
 	}()
 
-	hasStep, err := c.storage.HasStep(log, stepID)
+	scenario, err := c.storage.GetScenario(log, scenarioNr)
 	if err != nil {
 		return NewResultErrorModelFromErr(err)
 	}
-	if !hasStep {
-		return NewResultErrorModelFromTxt("unknown id of step")
-	}
 	cmd := command.New(exec.Command("nix", "run",
 		"-f", ".", // Use Nix expression from current working directory for now
-		"-c", "deploy-testchain.sh")).
+		"-c", scenario.RunCommand)).
 		WithDir(c.githubClient.GetRepoPath()).
 		WithEnvVarsMap(envVars)
 	if cmdErr := cmd.Run(); cmdErr != nil {
@@ -307,67 +281,52 @@ func (c *Component) GetCommitList(log *logrus.Entry) ([]github.Commit, *ResultEr
 	return res, nil
 }
 
-func (c *Component) getStepList(log *logrus.Entry) ([]StepModel, error) {
-	stepList := make([]StepModel, 0)
+func (c *Component) getManifest(log *logrus.Entry) (*Manifest, error) {
 	dirPath := c.githubClient.GetRepoPath()
-	deployTestchainFile := filepath.Join(dirPath, "deploy-testchain.json")
-	// To support `step-*.json` and `deploy-testchain.json` config formats we check
-	// here if `deploy-testchain.json` exists and if so use that for steps 1-9
-	// otherwise use the previous method of `step-*.json`.
-	if _, err := os.Stat(deployTestchainFile); err == nil {
-		log.Debugf("Read step 1 from: %s", deployTestchainFile)
-		model, err := readStepDescriptionFile(deployTestchainFile)
-		if err != nil {
-			return nil, err
-		}
-		// Copy config to steps 1 through 9 so that each step is the same
-		for i := 1; i <= 9; i++ {
-			model.ID = i
-			stepList = append(stepList, *model)
-		}
-	} else {
-		log.Debugf("Read step list from: %s", dirPath)
-		wErr := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if path == dirPath {
-				return nil
-			}
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-			res := c.stepNameRegexp.FindStringSubmatch(info.Name())
-			if len(res) != 2 {
-				return nil
-			}
-			step, err := strconv.Atoi(res[1])
-			if err != nil {
-				return err
-			}
-			model, err := readStepDescriptionFile(path)
-			if err != nil {
-				return err
-			}
-			model.ID = step
-			stepList = append(stepList, *model)
-			return nil
-		})
-		if wErr != nil {
-			return nil, wErr
-		}
-	}
-	return stepList, nil
-}
-
-func readStepDescriptionFile(path string) (*StepModel, error) {
-	bytes, err := ioutil.ReadFile(path)
+	log.Debugf("Read manifest from repo: %s", dirPath)
+	model, err := readManifestFile(ioutil.ReadFile, dirPath)
 	if err != nil {
 		return nil, err
 	}
-	var model StepModel
-	if err := json.Unmarshal(bytes, &model); err != nil {
+	return model, nil
+}
+
+type ReadFile func(path string) ([]byte, error)
+
+func readManifestFile(readFile ReadFile, repoPath string) (*Manifest, error) {
+	path := filepath.Join(repoPath, ".staxx")
+	data, err := readFile(path)
+	if err != nil {
 		return nil, err
 	}
-	return &model, nil
+	var model ManifestModel
+	if err := json.Unmarshal(data, &model); err != nil {
+		return nil, err
+	}
+
+	scenarios := make([]Scenario, len(model.Scenarios))
+	for i, scenario := range model.Scenarios {
+		configPath := filepath.Join(repoPath, scenario.ConfigPath)
+		config, err := readFile(configPath)
+		if err != nil {
+			return nil, err
+		}
+		var configModel json.RawMessage
+		if err := json.Unmarshal(config, &configModel); err != nil {
+			return nil, err
+		}
+		scenarios[i] = Scenario{
+			scenario.Name,
+			scenario.Description,
+			scenario.RunCommand,
+			configModel,
+		}
+	}
+
+	manifest := Manifest{
+		model.Name,
+		model.Description,
+		scenarios,
+	}
+	return &manifest, nil
 }

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,53 +12,63 @@ import (
 
 //InMemory implementation of storage, use mutex for data consistent
 type InMemory struct {
-	hasHash   bool
-	hasList   bool
-	run       bool
-	update    bool
-	hash      string
-	modelMap  map[int]deploy.StepModel
-	mu        sync.Mutex
-	updatedAt time.Time
+	hasHash     bool
+	hasManifest bool
+	run         bool
+	update      bool
+	hash        string
+	manifest    deploy.Manifest
+	mu          sync.Mutex
+	updatedAt   time.Time
 }
 
 //NewInMemory init storaga
 func NewInMemory() *InMemory {
-	return &InMemory{
-		modelMap: make(map[int]deploy.StepModel),
-	}
+	return &InMemory{}
 }
 
-func (s *InMemory) UpsertStepList(log *logrus.Entry, modelList []deploy.StepModel) error {
+func (s *InMemory) UpsertManifest(log *logrus.Entry, manifest deploy.Manifest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.modelMap = make(map[int]deploy.StepModel)
-	for _, model := range modelList {
-		if _, ok := s.modelMap[model.ID]; ok {
-			return errors.New("some model has equal id")
-		}
-		s.modelMap[model.ID] = model
-	}
-	s.hasList = true
+	s.manifest = manifest
+	s.hasManifest = true
 	return nil
+}
+
+func (s *InMemory) GetManifest(log *logrus.Entry) (*deploy.Manifest, error) {
+	if !s.HasData() {
+		return nil, errors.New("has not loaded data")
+	}
+	return &s.manifest, nil
+}
+
+func (s *InMemory) GetScenario(log *logrus.Entry, scenarioNr int) (*deploy.Scenario, error) {
+	hasScenario, err := s.HasScenario(log, scenarioNr)
+	if err != nil {
+		return nil, errors.New("has not loaded data")
+	}
+	if !hasScenario {
+		return nil, fmt.Errorf("scenario nr. %d not available", scenarioNr)
+	}
+	return &s.manifest.Scenarios[scenarioNr-1], nil
 }
 
 func (s *InMemory) GetStepList(log *logrus.Entry) ([]deploy.StepModel, error) {
 	if !s.HasData() {
 		return nil, errors.New("has not loaded data")
 	}
-	res := make([]deploy.StepModel, 0)
-	for _, model := range s.modelMap {
-		res = append(res, model)
+	stepList, err := deploy.NewStepListFromManifest(&s.manifest)
+	if err != nil {
+		return nil, err
 	}
-	return res, nil
+	return stepList, nil
 }
 
-func (s *InMemory) HasStep(log *logrus.Entry, id int) (bool, error) {
-	if _, ok := s.modelMap[id]; ok {
-		return true, nil
+func (s *InMemory) HasScenario(log *logrus.Entry, scenarioNr int) (bool, error) {
+	if !s.HasData() {
+		return false, errors.New("has not loaded data")
 	}
-	return false, nil
+	return (1 <= scenarioNr && scenarioNr <= len(s.manifest.Scenarios)), nil
 }
 
 func (s *InMemory) SetTagHash(log *logrus.Entry, hash string) error {
@@ -73,7 +84,7 @@ func (s *InMemory) GetTagHash(log *logrus.Entry) (hash string, err error) {
 }
 
 func (s *InMemory) HasData() bool {
-	return s.hasHash && s.hasList
+	return s.hasHash && s.hasManifest
 }
 
 func (s *InMemory) SetRun(run bool) error {
