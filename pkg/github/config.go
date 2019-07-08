@@ -16,7 +16,7 @@ func (c *Config) Validate() error {
 func GetDefaultConfig() Config {
 	return Config{
 		RepoOwner:             "makerdao",
-		RepoName:              "testchain-dss-deployment-scripts",
+		RepoName:              "dss-deploy-scripts",
 		DefaultCheckoutTarget: "tags/qa-deploy",
 	}
 }
