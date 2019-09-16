@@ -102,7 +102,7 @@ func httpServConfigure(
 	log *logrus.Entry,
 	port int,
 	methodsComponent *methods.Methods,
-	storage HTTPServerStorage,
+	storage storage.Storage,
 ) (*HTTPServer, error) {
 	// register methods in handler
 	handler := shttp.NewHandler(log)
@@ -137,13 +137,8 @@ func httpServConfigure(
 	}, nil
 }
 
-type HTTPServerStorage interface {
-	GetUpdate() bool
-	GetRun() bool
-}
-
 type HTTPServer struct {
-	Storage HTTPServerStorage
+	Storage storage.Storage
 	http.Server
 }
 

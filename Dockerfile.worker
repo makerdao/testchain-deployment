@@ -1,0 +1,8 @@
+FROM makerdao/testchain-deployment-base:latest
+
+VOLUME /root/.ssh
+
+COPY certs /etc/ssl/certs/
+COPY ./bin/linux-amd64/worker /worker
+
+ENTRYPOINT ["./worker"]
