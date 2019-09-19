@@ -294,7 +294,7 @@ func (c *Component) getManifest(log *logrus.Entry) (*Manifest, error) {
 type ReadFile func(path string) ([]byte, error)
 
 func readManifestFile(readFile ReadFile, repoPath string) (*Manifest, error) {
-	path := filepath.Join(repoPath, ".staxx")
+	path := filepath.Join(repoPath, ".staxx-scenarios")
 	data, err := readFile(path)
 	if err != nil {
 		return nil, err

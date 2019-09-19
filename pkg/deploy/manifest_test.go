@@ -17,7 +17,7 @@ func TestReadManifestFile(t *testing.T) {
 	mockFileReader := func(path string) ([]byte, error) {
 		t.Logf("mock file reader: %s", path)
 		switch path {
-		case ".staxx":
+		case ".staxx-scenarios":
 			return []byte(`{
 				"name": "TestManifest",
 				"description": "",
