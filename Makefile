@@ -1,6 +1,7 @@
 GOOS ?= linux
 GOARCH ?= amd64
 SRV = $(notdir $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
+SRV_WORKER = $(notdir $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))-worker
 PROJECT = github.com/makerdao/${SRV}
 TAG ?= latest
 BUILD ?= `git rev-parse --short HEAD`
@@ -12,7 +13,9 @@ REGISTRY ?= makerdao/
 build: vendor lint certs
 	@echo "+ $@ ${GOOS}"
 	@CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -a -installsuffix cgo \
-		-o bin/${GOOS}-${GOARCH}/service ${PROJECT}/cmd
+		-o bin/${GOOS}-${GOARCH}/service ${PROJECT}/cmd/rpc
+	@CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -a -installsuffix cgo \
+        -o bin/${GOOS}-${GOARCH}/worker ${PROJECT}/cmd/worker
 .PHONY: build
 
 vendor:
@@ -51,6 +54,14 @@ build-image: build
 		-t ${REGISTRY}${SRV}:${BUILD} \
 		-t ${REGISTRY}${SRV}:${TAG} .
 .PHONY: build-image
+
+build-worker-image: build
+	@echo "+ $@"
+	@docker build \
+		-t ${REGISTRY}${SRV_WORKER}:${BUILD} \
+		-t ${REGISTRY}${SRV_WORKER}:${TAG} \
+		-f Dockerfile.worker .
+.PHONY: build-worker-image
 
 build-base-image:
 	@echo "+ $@"
