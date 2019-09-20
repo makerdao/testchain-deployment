@@ -36,7 +36,7 @@ func (m *Methods) Run(
 		resultReq := &gateway.RunResultRequest{
 			ID: id,
 		}
-		if resErr := m.deployComponent.RunStep(log, req.StepID, req.EnvVars); resErr != nil {
+		if resErr := m.deployComponent.RunScenario(log, req.StepID, req.EnvVars); resErr != nil {
 			resultReq.Type = gateway.RunResultRequestTypeErr
 			errResBytes, err := json.Marshal(resErr)
 			if err != nil {

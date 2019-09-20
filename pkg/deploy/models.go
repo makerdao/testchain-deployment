@@ -19,6 +19,45 @@ type StepModel struct {
 	Ilks             json.RawMessage `json:"ilks"`
 }
 
+type Manifest struct {
+	Name        string
+	Description string
+	Scenarios   []Scenario
+}
+
+type Scenario struct {
+	Name        string
+	Description string
+	RunCommand  string
+	Config      json.RawMessage
+}
+
+type ManifestModel struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Scenarios   []ScenarioModel `json:"scenarios"`
+}
+
+type ScenarioModel struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	RunCommand  string `json:"run"`
+	ConfigPath  string `json:"config"`
+}
+
+func NewStepListFromManifest(manifest *Manifest) ([]StepModel, error) {
+	stepList := make([]StepModel, len(manifest.Scenarios))
+	for i, scenario := range manifest.Scenarios {
+		var step StepModel
+		if err := json.Unmarshal(scenario.Config, &step); err != nil {
+			return nil, err
+		}
+		step.ID = i + 1
+		stepList[i] = step
+	}
+	return stepList, nil
+}
+
 type ResultErrorModel struct {
 	Msg       string `json:"msg"`
 	StderrB64 string `json:"stderrB64"`
