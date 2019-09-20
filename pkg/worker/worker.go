@@ -44,7 +44,7 @@ func (w *Worker) Run(log *logrus.Entry) error {
 		ID: runConfig.RequestID,
 	}
 
-	if resErr := w.deployComponent.RunStep(log, runConfig.StepID, runConfig.DeployEnvVars); resErr != nil {
+	if resErr := w.deployComponent.RunScenario(log, runConfig.StepID, runConfig.DeployEnvVars); resErr != nil {
 		resultReq.Type = gateway.RunResultRequestTypeErr
 		errResBytes, err := json.Marshal(resErr)
 		if err != nil {
