@@ -30,6 +30,7 @@ type Scenario struct {
 	Description string
 	RunCommand  string
 	Config      json.RawMessage
+	OutPath     string
 }
 
 type ManifestModel struct {
@@ -43,6 +44,7 @@ type ScenarioModel struct {
 	Description string `json:"description"`
 	RunCommand  string `json:"run"`
 	ConfigPath  string `json:"config"`
+	OutPath     string `json:"out"`
 }
 
 func NewStepListFromManifest(manifest *Manifest) ([]StepModel, error) {

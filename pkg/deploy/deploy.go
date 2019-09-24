@@ -284,7 +284,7 @@ func (c *Component) GetCommitList(log *logrus.Entry) ([]github.Commit, *ResultEr
 func (c *Component) getManifest(log *logrus.Entry) (*Manifest, error) {
 	dirPath := c.githubClient.GetRepoPath()
 	log.Debugf("Read manifest from repo: %s", dirPath)
-	model, err := readManifestFile(ioutil.ReadFile, dirPath)
+	model, err := ReadManifestFile(ioutil.ReadFile, dirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,7 @@ func (c *Component) getManifest(log *logrus.Entry) (*Manifest, error) {
 
 type ReadFile func(path string) ([]byte, error)
 
-func readManifestFile(readFile ReadFile, repoPath string) (*Manifest, error) {
+func ReadManifestFile(readFile ReadFile, repoPath string) (*Manifest, error) {
 	path := filepath.Join(repoPath, ".staxx-scenarios")
 	data, err := readFile(path)
 	if err != nil {
@@ -320,6 +320,7 @@ func readManifestFile(readFile ReadFile, repoPath string) (*Manifest, error) {
 			scenario.Description,
 			scenario.RunCommand,
 			configModel,
+			scenario.OutPath,
 		}
 	}
 
