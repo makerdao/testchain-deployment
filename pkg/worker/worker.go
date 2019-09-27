@@ -111,9 +111,6 @@ func ParseEnvInput() (*RunConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if scenarioNr == 0 {
-		return nil, fmt.Errorf("wrong SCENARIO_NR passed for deployment %d", scenarioNr)
-	}
 
 	requestID := os.Getenv("REQUEST_ID")
 	if requestID == "" {

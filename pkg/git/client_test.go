@@ -39,12 +39,12 @@ func TestGetRefs(t *testing.T) {
 }
 
 // TODO: make this test not depend on external resource
-//func testGetRepoPath(t *testing.T) {
+//func TestGetRepoPath(t *testing.T) {
 //	// Run
 //	repoPath, err := GetRepoPath(Commit{
 //		URL: "https://github.com/makerdao/dss-deploy-scripts",
-//		Ref: "refs/tags/staxx-deploy",
-//		Rev: "4b3682baa91ad34898c9fc8474b27d5721ff7150",
+//		Ref: "STAX-14-manifest-file",
+//		Rev: "a3410d6d6a375ac3e04c7bee983ead7710efa0e0",
 //	})
 //	if err != nil {
 //		t.Error(err)

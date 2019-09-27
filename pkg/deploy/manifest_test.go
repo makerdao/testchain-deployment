@@ -26,15 +26,15 @@ func TestReadManifestFile(t *testing.T) {
 						"name": "TestScenario1",
 						"description": "",
 						"run": "deploy-step-1",
-						"config": "testconfig1.json",
-						"out": "out/addresses.json"
+						"configPath": "testconfig1.json",
+						"outPath": "out/addresses.json"
 					},
 					{
 						"name": "TestScenario2",
 						"description": "",
 						"run": "deploy-step-2",
-						"config": "testconfig2.json",
-						"out": "out/addresses.json"
+						"configPath": "testconfig2.json",
+						"outPath": "out/addresses.json"
 					}
 				]
 			}`), nil

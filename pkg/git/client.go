@@ -9,9 +9,7 @@ import (
 
 const (
 	nixExpr = `toString (fetchGit {
-    url = "%s";
-    ref = "%s";
-    rev = "%s";
+    url = "%s";ref = "%s";%s
   })`
 )
 
@@ -22,7 +20,12 @@ type Commit struct {
 }
 
 func commitToNix(commit Commit) string {
-	return fmt.Sprintf(nixExpr, commit.URL, commit.Ref, commit.Rev)
+	var rev = ""
+
+	if commit.Rev != "" {
+		rev = fmt.Sprintf("rev = \"%s\";", commit.Rev)
+	}
+	return fmt.Sprintf(nixExpr, commit.URL, commit.Ref, rev)
 }
 
 func runCmd(cmd *exec.Cmd) (string, error) {

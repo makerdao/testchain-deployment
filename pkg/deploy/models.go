@@ -20,17 +20,17 @@ type StepModel struct {
 }
 
 type Manifest struct {
-	Name        string
-	Description string
-	Scenarios   []Scenario
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Scenarios   []Scenario `json:"scenarios"`
 }
 
 type Scenario struct {
-	Name        string
-	Description string
-	RunCommand  string
-	Config      json.RawMessage
-	OutPath     string
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	RunCommand  string          `json:"run"`
+	Config      json.RawMessage `json:"config"`
+	OutPath     string          `json:"outPath"`
 }
 
 type ManifestModel struct {
@@ -43,8 +43,8 @@ type ScenarioModel struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	RunCommand  string `json:"run"`
-	ConfigPath  string `json:"config"`
-	OutPath     string `json:"out"`
+	ConfigPath  string `json:"configPath"`
+	OutPath     string `json:"outPath"`
 }
 
 func NewStepListFromManifest(manifest *Manifest) ([]StepModel, error) {
