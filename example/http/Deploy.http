@@ -1,0 +1,24 @@
+POST http://localhost:5001/rpc
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "id": "reqID",
+  "method": "Deploy",
+  "data": {
+    "url": "https://github.com/makerdao/dss-deploy-scripts",
+    "ref": "staxx-deploy",
+    "rev": "a3410d6d6a375ac3e04c7bee983ead7710efa0e0"
+    "scenarioNr": 0,
+    "envVars": {
+      "ETH_FROM": "0xeda42c1e65b01c66f63e53d705ac9dd1d0148d06",
+      "ETH_GAS": "7000000",
+      "ETH_RPC_ACCOUNTS": "yes",
+      "ETH_RPC_URL": "http://ex_testchain:8518",
+      "SETH_STATUS": "yes"
+    }
+  }
+}
+
+###

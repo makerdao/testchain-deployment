@@ -9,7 +9,34 @@
 * docker for run
 * github.com api token for run updating of deployment source(simple put it to file `.apiToken` in the root of project)
 
-## Build and run
+## Build and run worker process
+
+To only run one deployment you can spawn a worker. The worker process looks at
+environment variables to determine what GIT repo to use for deployment, executes
+a scenario sends the result to the `staxx` gateway and exits.
+
+* `REPO_URL`: an URL pointing to a GIT repo containing a `.staxx-scenarios` file
+* `REPO_REF` (optional): a GIT reference e.g. `tags/staxx-deploy` or `heads/master`
+* `REPO_REV` (optional): a specific commit hash (*Note:* the hash must be a parent of `REPO_REF`)
+* `SCENARIO_NR`: which scenario to run from the `.staxx-scenarios` file, an integer value which starts at index 0
+* `DEPLOY_ENV`: a JSON object that represents environment variables to be set for deployment script
+* `REQUEST_ID`: an arbitrary string which will be used as request ID in callback to gateway when deployment is successful
+
+### Run worker
+
+```sh
+REQUEST_ID=1337
+SCENARIO_NR=0
+REPO_URL="https://github.com/makerdao/dss-deploy-scripts"
+REPO_REF="staxx-deploy"
+REPO_REV="a3410d6d6a375ac3e04c7bee983ead7710efa0e0"
+DEPLOY_ENV='{"ETH_FROM":"0x4af990932fa5cadd22398de0485850a5c9ca1350","ETH_GAS":"7000000","ETH_KEYSTORE":"~/.dapp/testnet/8545/keystore","ETH_PASSWORD":"/dev/null","ETH_RPC_URL":"http://localhost:8545"}'
+
+make run GOOS=linux  # for linux
+make run GOOS=darwin # for mac
+```
+
+## Build and run info service
 
 ### Local
 
@@ -81,6 +108,154 @@ List of codes:
 * notFound
 
 ### Methods:
+
+#### GetRefs
+
+Get GIT repo refs for an URL.
+
+Request:
+
+```json
+{
+  "id": "reqID",
+  "method": "GetRefs",
+  "data": {
+    "url": "https://github.com/makerdao/dss-deploy-scripts"
+  }
+}
+```
+
+Good response example:
+
+```json
+{
+  "type": "ok",
+  "result": [
+    {
+      "url": "https://github.com/makerdao/dss-deploy-scripts",
+      "ref": "refs/heads/master",
+      "rev": "a3410d6d6a375ac3e04c7bee983ead7710efa0e0"
+    },
+    {
+      "url": "https://github.com/makerdao/dss-deploy-scripts",
+      "ref": "refs/tags/staxx-deploy",
+      "rev": "a3410d6d6a375ac3e04c7bee983ead7710efa0e0"
+    }
+  ]
+}
+```
+
+#### GetManifest
+
+Get deployment manifest for GIT repo, read from `.staxx-scenarios`.
+
+Request:
+
+```json
+{
+  "id": "reqID",
+  "method": "GetManifest",
+  "data": {
+    "url": "https://github.com/makerdao/dss-deploy-scripts",
+    "ref": "staxx-deploy",
+    "rev": "a3410d6d6a375ac3e04c7bee983ead7710efa0e0"
+  }
+}
+```
+
+Good response example:
+
+```json
+{
+  "type": "ok",
+  "result": {
+    "name": "dss-deploy-scripts",
+    "description": "MCD deployment",
+    "scenarios": [
+      {
+        "name": "scenario0",
+        "description": "MCD - General deployment",
+        "run": "deploy-testchain.sh",
+        "config": {
+          "description": "Testchain Deployment",
+          "defaults": {},
+          "roles": [
+            "CREATOR"
+          ],
+          "omniaFromAddr": "0xdc9A20F5a46AFE0802b361076BeFC51f787B2e58",
+          "pauseDelay": "0",
+          "wait": "0"
+          // rest of config JSON ...
+        },
+        "outPath": "out/addresses.json"
+      },
+      {
+        "name": "scenario1",
+        "description": "Example 1",
+        "run": "deploy-testchain.sh",
+        "config": { ... },
+        "outPath": "out/addresses.json"
+      },
+      {
+        "name": "scenario2",
+        "description": "Example 2",
+        "run": "deploy-testchain.sh",
+        "config": { ... },
+        "outPath": "out/addresses.json"
+      },
+      {
+        "name": "scenario3",
+        "description": "Example 3",
+        "run": "deploy-testchain.sh",
+        "config": { ... },
+        "outPath": "out/addresses.json"
+      }
+    ]
+  }
+}
+
+```
+
+#### Deploy
+
+Run deployment scenario for a GIT repo.
+
+This call is async and will call back to gateway with `reqID` and a payload read
+from the scenarios `outPath`.
+
+Request:
+
+```json
+{
+  "id": "reqID",
+  "method": "Deploy",
+  "data": {
+    // URL and ref/rev to GIT repo with `.staxx-scenarios` file in
+    "url": "https://github.com/makerdao/dss-deploy-scripts",
+    "ref": "staxx-deploy",
+    "rev": "a3410d6d6a375ac3e04c7bee983ead7710efa0e0"
+
+    // Scenario number starts at 0
+    "scenarioNr": 0,
+
+    // Map of env vars for scenario command
+    "envVars": {
+      "NAME_OF_ENV_VAR": "valueOfEnvVar"
+    }
+  }
+}
+```
+
+Good response example:
+
+```json
+{
+  "type": "ok",
+  "result": {}
+}
+```
+
+### Depricated Methods:
 
 #### GetInfo
 
@@ -301,6 +476,3 @@ Supported async result for `Run` and `UpdateSource`.
 3. Send http request for run, for example `./examples/http/Run.http`
 4. ...
 5. PROFIT!!!!1111
-
-
-

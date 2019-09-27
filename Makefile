@@ -29,6 +29,11 @@ run: build
 	@bin/${GOOS}-${GOARCH}/service
 .PHONY: run
 
+run-worker: build
+	@echo "+ $@ ${GOOS}"
+	@bin/${GOOS}-${GOARCH}/worker
+.PHONY: run-worker
+
 test:
 	@echo "+ $@"
 	@mkdir ${PWD}/.testdir && echo "testdir created" || echo "testdir already exists"
