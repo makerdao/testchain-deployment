@@ -51,6 +51,7 @@ docker-push:
 	@echo "Pushing docker images"
 	@docker push ${REGISTRY}${SRV}-base:latest
 	@docker push ${REGISTRY}${SRV}:${TAG}
+	@docker push ${REGISTRY}${SRV_WORKER}:${TAG}
 .PHONY: docker-push
 
 build-image: build
