@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,117 +10,106 @@ import (
 	"github.com/makerdao/testchain-deployment/pkg/config"
 	"github.com/makerdao/testchain-deployment/pkg/deploy"
 	"github.com/makerdao/testchain-deployment/pkg/gateway"
-	"github.com/makerdao/testchain-deployment/pkg/github"
-	"github.com/makerdao/testchain-deployment/pkg/storage"
+	"github.com/makerdao/testchain-deployment/pkg/git"
 	gonats "github.com/nats-io/go-nats"
 	"github.com/sirupsen/logrus"
 )
 
 type RunConfig struct {
-	StepID        int
+	RepoURL       string
+	RepoRef       string
+	RepoRev       string
+	ScenarioNr    int
 	RequestID     string
 	DeployEnvVars map[string]string
 }
 
 type Worker struct {
-	Storage         storage.Storage
-	gatewayClient   *gateway.Client
-	githubClient    *github.Client
-	deployComponent *deploy.Component
+	gatewayClient *gateway.Client
+	log           *logrus.Entry
 }
 
-func (w *Worker) Run(log *logrus.Entry) error {
-	if err := w.deployComponent.FirstUpdate(log); err != nil {
+func (w *Worker) failJob(reqID string, resErr *deploy.ResultErrorModel) error {
+	w.log.Errorf(resErr.Msg)
+
+	errResBytes, err := json.Marshal(resErr)
+	if err != nil {
+		w.log.WithError(err).Error("Can't marshal error")
 		return err
 	}
+
+	resultReq := &gateway.RunResultRequest{
+		ID:     reqID,
+		Type:   gateway.RunResultRequestTypeErr,
+		Result: errResBytes,
+	}
+	if err := w.gatewayClient.RunResult(w.log, resultReq); err != nil {
+		w.log.WithError(err).Error("Can't send error result to gateway")
+		return err
+	}
+
+	return fmt.Errorf("Worker failed to run deployment with error %+v", resErr)
+}
+
+func (w *Worker) returnResult(reqID string, res *deploy.ResultModel) error {
+	resBytes, err := json.Marshal(res)
+	if err != nil {
+		w.log.WithError(err).Error("Can't marshal error for run result")
+		return w.failJob(reqID, deploy.NewResultErrorModelFromErr(err))
+	}
+
+	resultReq := &gateway.RunResultRequest{
+		ID:     reqID,
+		Type:   gateway.RunResultRequestTypeOK,
+		Result: resBytes,
+	}
+	if err := w.gatewayClient.RunResult(w.log, resultReq); err != nil {
+		w.log.WithError(err).Error("Can't send request with result of run to gateway")
+		return err
+	}
+
+	return nil
+}
+
+func readResult(res json.RawMessage) *deploy.ResultModel {
+	return deploy.NewResultModel(time.Now(), res)
+}
+
+func (w *Worker) Run() error {
 	runConfig, err := ParseEnvInput()
 	if err != nil {
 		return err
 	}
-	log.Debugf("Running deployment with config: %+v", runConfig)
-
-	resultReq := &gateway.RunResultRequest{
-		ID: runConfig.RequestID,
+	deployment := deploy.Deployment{
+		Commit: git.Commit{
+			URL: runConfig.RepoURL,
+			Ref: runConfig.RepoRef,
+			Rev: runConfig.RepoRev,
+		},
+		ScenarioNr:    runConfig.ScenarioNr,
+		DeployEnvVars: runConfig.DeployEnvVars,
 	}
 
-	if resErr := w.deployComponent.RunScenario(log, runConfig.StepID, runConfig.DeployEnvVars); resErr != nil {
-		resultReq.Type = gateway.RunResultRequestTypeErr
-		errResBytes, err := json.Marshal(resErr)
-		if err != nil {
-			log.WithError(err).Error("Can't marshal error for run result")
-			return err
-		}
-		resultReq.Result = errResBytes
-		if err := w.gatewayClient.RunResult(log, resultReq); err != nil {
-			log.WithError(err).Error("Can't send request with result of run to gateway with error")
-			return err
-		}
-		log.Errorf(resErr.Msg)
-		return fmt.Errorf("failed to run deployment with error %+v", resErr)
-	}
-
-	log.Debugf("Finished deployment step")
-
-	res, resErr := w.deployComponent.ReadResult()
-	if resErr != nil {
-		resultReq.Type = gateway.RunResultRequestTypeErr
-		errResBytes, err := json.Marshal(resErr)
-		if err != nil {
-			log.WithError(err).Error("Can't marshal error for read result")
-		}
-		resultReq.Result = errResBytes
-		if err := w.gatewayClient.RunResult(log, resultReq); err != nil {
-			log.WithError(err).Error("Can't send request with result of run to gateway with error")
-		}
-		log.Errorf(resErr.Msg)
-		return fmt.Errorf("failed to read deployment result with error %+v", resErr)
-	}
-
-	resBytes, err := json.Marshal(res)
+	res, err := deploy.Deploy(w.log, deployment)
 	if err != nil {
-		log.WithError(err).Error("Can't marshal error for run result")
+		return w.failJob(runConfig.RequestID, deploy.NewResultErrorModelFromErr(err))
 	}
-	resultReq.Type = gateway.RunResultRequestTypeOK
-	resultReq.Result = resBytes
-	if err := w.gatewayClient.RunResult(log, resultReq); err != nil {
-		log.WithError(err).Error("Can't send request with result of run to gateway")
-		return err
-	}
-	return nil
-}
 
-func (w *Worker) Shutdown(ctx context.Context, log *logrus.Entry) error {
-	log.Debug("Start graceful shutdown of worker")
-	defer log.Debug("Graceful shutdown of worker: done")
-	//wait while all operations will be finished
-	opCh := make(chan struct{})
-	go func() {
-		for {
-			if !w.Storage.GetRun() {
-				opCh <- struct{}{}
-				return
-			}
-			time.Sleep(10 * time.Second)
-		}
-	}()
-	select {
-	case <-opCh:
-		// TODO: check error
-		return nil
-	case <-ctx.Done():
-		//return fmt.Errorf("context cancalled, but operations not colmpleted, server err: %w", err.Error())
-		return nil
-	}
+	return w.returnResult(runConfig.RequestID, readResult(res))
 }
 
 func ParseEnvInput() (*RunConfig, error) {
-	stepIDStr := os.Getenv("STEP_ID")
-	stepID, err := strconv.Atoi(stepIDStr)
+	repoURL := os.Getenv("REPO_URL")
+	repoRef := os.Getenv("REPO_REF")
+	repoRev := os.Getenv("REPO_REV")
+	if repoURL == "" {
+		return nil, fmt.Errorf("Need to specify REPO_URL and optinally REPO_REF and REPO_REV")
+	}
+
+	scenarioNrStr := os.Getenv("SCENARIO_NR")
+	scenarioNr, err := strconv.Atoi(scenarioNrStr)
 	if err != nil {
 		return nil, err
-	}
-	if stepID == 0 {
-		return nil, fmt.Errorf("wrong STEP_ID passed for deployment %d", stepID)
 	}
 
 	requestID := os.Getenv("REQUEST_ID")
@@ -136,7 +124,10 @@ func ParseEnvInput() (*RunConfig, error) {
 	}
 
 	return &RunConfig{
-		StepID:        stepID,
+		RepoURL:       repoURL,
+		RepoRef:       repoRef,
+		RepoRev:       repoRev,
+		ScenarioNr:    scenarioNr,
 		RequestID:     requestID,
 		DeployEnvVars: envVars,
 	}, nil
@@ -154,16 +145,11 @@ func Execute(log *logrus.Entry, cfg *config.Config) error {
 	}
 
 	gatewayClient := gateway.NewClient(cfg.Gateway, natsConn, cfg.NATS)
-	githubClient := github.NewClient(cfg.Github, cfg.Deploy.DeploymentDirPath)
-	inMemStorage := storage.NewInMemory()
-	deployComponent := deploy.New(cfg.Deploy, githubClient, inMemStorage)
 
 	worker := &Worker{
-		Storage:         inMemStorage,
-		gatewayClient:   gatewayClient,
-		githubClient:    githubClient,
-		deployComponent: deployComponent,
+		gatewayClient: gatewayClient,
+		log:           log,
 	}
 
-	return worker.Run(log)
+	return worker.Run()
 }

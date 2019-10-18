@@ -1,0 +1,16 @@
+POST http://localhost:5001/rpc
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "id": "reqID",
+  "method": "GetManifest",
+  "data": {
+    "url": "https://github.com/makerdao/dss-deploy-scripts",
+    "ref": "staxx-deploy",
+    "rev": "a3410d6d6a375ac3e04c7bee983ead7710efa0e0"
+  }
+}
+
+###

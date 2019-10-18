@@ -26,13 +26,15 @@ func TestReadManifestFile(t *testing.T) {
 						"name": "TestScenario1",
 						"description": "",
 						"run": "deploy-step-1",
-						"config": "testconfig1.json"
+						"configPath": "testconfig1.json",
+						"outPath": "out/addresses.json"
 					},
 					{
 						"name": "TestScenario2",
 						"description": "",
 						"run": "deploy-step-2",
-						"config": "testconfig2.json"
+						"configPath": "testconfig2.json",
+						"outPath": "out/addresses.json"
 					}
 				]
 			}`), nil
@@ -42,7 +44,7 @@ func TestReadManifestFile(t *testing.T) {
 	}
 
 	// Run
-	manifest, err := readManifestFile(mockFileReader, ".")
+	manifest, err := ReadManifestFile(mockFileReader, ".")
 	if err != nil {
 		t.Error(err)
 	}
@@ -66,6 +68,9 @@ func TestReadManifestFile(t *testing.T) {
 	if scenario2.Name != "TestScenario2" {
 		t.Errorf("Scenario 2's name doesn't match unmarshaled name: %s", scenario2.Name)
 	}
+	if scenario1.OutPath != "out/addresses.json" {
+		t.Errorf("Scenario 1's out path doesn't match unmarshaled out path: %s", scenario1.OutPath)
+	}
 }
 
 func TestNewStepListFromManifest(t *testing.T) {
@@ -87,6 +92,7 @@ func TestNewStepListFromManifest(t *testing.T) {
 						"pauseDelay": "0"
 					}`,
 				),
+				"out/addresses.json",
 			},
 			{
 				"TestScenario2!",
@@ -101,6 +107,7 @@ func TestNewStepListFromManifest(t *testing.T) {
 						"pauseDelay": "0"
 					}`,
 				),
+				"out/addresses.json",
 			},
 		},
 	}

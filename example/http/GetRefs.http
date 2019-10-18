@@ -1,0 +1,14 @@
+POST http://localhost:5001/rpc
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+
+{
+  "id": "reqID",
+  "method": "GetRefs",
+  "data": {
+    "url": "https://github.com/makerdao/dss-deploy-scripts"
+  }
+}
+
+###
