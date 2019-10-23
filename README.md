@@ -25,15 +25,14 @@ a scenario sends the result to the `staxx` gateway and exits.
 ### Run worker
 
 ```sh
-REQUEST_ID=1337
-SCENARIO_NR=0
-REPO_URL="https://github.com/makerdao/dss-deploy-scripts"
-REPO_REF="staxx-deploy"
-REPO_REV="a3410d6d6a375ac3e04c7bee983ead7710efa0e0"
-DEPLOY_ENV='{"ETH_FROM":"0x4af990932fa5cadd22398de0485850a5c9ca1350","ETH_GAS":"7000000","ETH_KEYSTORE":"~/.dapp/testnet/8545/keystore","ETH_PASSWORD":"/dev/null","ETH_RPC_URL":"http://localhost:8545"}'
+export REQUEST_ID=1337
+export SCENARIO_NR=0
+export REPO_URL="https://github.com/makerdao/dss-deploy-scripts"
+export REPO_REF="staxx-deploy"
+export DEPLOY_ENV='{"ETH_FROM":"0x980957073687abbfc85609ecd7c118d2b7506a17","ETH_GAS":"7000000","ETH_KEYSTORE":"~/.dapp/testnet/8545/keystore","ETH_PASSWORD":"/dev/null","ETH_RPC_URL":"http://localhost:8545"}'
 
-make run GOOS=linux  # for linux
-make run GOOS=darwin # for mac
+make run-worker GOOS=linux  # for linux
+make run-worker GOOS=darwin # for mac
 ```
 
 ## Build and run info service
