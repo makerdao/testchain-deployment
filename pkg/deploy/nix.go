@@ -49,7 +49,10 @@ func Deploy(log *logrus.Entry, deployment Deployment) ([]byte, error) {
 	}
 	defer os.RemoveAll(workDir)
 
+	log.Debugf("Working directory: %s", workDir)
+	log.Debugf("Environment variables: %v", deployment.DeployEnvVars)
 	log.Debugf("Running deployment command: %s", scenario.RunCommand)
+
 	cmd := command.New(exec.Command("nix", "run",
 		"-f", repoPath,
 		"-c", scenario.RunCommand)).
