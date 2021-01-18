@@ -59,9 +59,7 @@ func Deploy(log *logrus.Entry, deployment Deployment) ([]byte, error) {
 		"-f", repoPath,
 		"-c",
 	}
-	for _, c := range strings.Split(scenario.RunCommand, " ") {
-		args = append(args, c)
-	}
+	args = append(args, strings.Split(scenario.RunCommand, " ")...)
 	cmd := command.New(exec.Command("nix", args...)).
 		WithDir(workDir).
 		WithEnvVarsMap(deployment.DeployEnvVars)
