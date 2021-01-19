@@ -43,7 +43,7 @@ test:
 lint:
 	@echo "+ $@"
 	@docker run --rm -i  \
-		-v ${GOPATH}/src/${PROJECT}:/go/src/${PROJECT} \
+		-v ${PWD}:/go/src/${PROJECT} \
 		-w /go/src/${PROJECT} golangci/golangci-lint:v1.12 golangci-lint run --enable-all --skip-dirs vendor,version,pkg/gen ./...
 .PHONY: lint
 
